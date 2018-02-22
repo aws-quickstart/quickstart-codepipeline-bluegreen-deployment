@@ -1,0 +1,3 @@
+[submodule "submodules/quickstart-git2s3"]
+	path = submodules/quickstart-git2s3
+	url = https://github.com/aws-quickstart/quickstart-git2s3.git

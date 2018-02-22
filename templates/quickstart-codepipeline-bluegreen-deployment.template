@@ -1,0 +1,1988 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CICD Pipeline setup for a cost efficient Elastic Beanstalk Blue-Green deployment.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Git2s3 Setup parameters. Valid only when GitToS3integration parameter is set to true. Ignore these parameters if GitToS3integration is set to false"
+                    },
+                    "Parameters": [
+                        "GitToS3integration",
+                        "OutputBucketName",
+                        "OutputBucketKey",
+                        "CustomDomainName",
+                        "ApiSecret",
+                        "AllowedIps",
+                        "GitToken",
+                        "OauthKey",
+                        "OauthSecret"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "AWS Quick Start Configuration"
+                    },
+                    "Parameters": [
+                        "QSS3BucketName",
+                        "QSS3KeyPrefix"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "AWS Elastic Beanstalk Configuration"
+                    },
+                    "Parameters": [
+                        "BeanstalkSourceStageS3BucketName",
+                        "BeanstalkSourceStageS3BucketKey",
+                        "ExistingBlueEnvironmentName",
+                        "ExistingBeanstalkApplicationName",
+                        "NewBlueEnvironmentName",
+                        "GreenEnvironmentName",
+                        "NewBeanstalkApplicationName",
+                        "SolutionStackForNewBeanstalkEnv",
+                        "AppPackageS3Bucket",
+                        "AppPackageS3key"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "AWS CodePipeline Parameters"
+                    },
+                    "Parameters": [
+                        "AdministratorEmail",
+                        "NameofthePipeline",
+                        "OutputBucketKey"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "AllowedIps": {
+                    "default": "Allowed IPs"
+                },
+                "ApiSecret": {
+                    "default": "API Secret"
+                },
+                "CustomDomainName": {
+                    "default": "Custom Domain Name"
+                },
+                "GitToken": {
+                    "default": "Git Personal Access Token"
+                },
+                "OauthKey": {
+                    "default": "OAuth2 Key"
+                },
+                "OauthSecret": {
+                    "default": "OAuth2 Secret"
+                },
+                "OutputBucketName": {
+                    "default": "Output S3 Bucket Name"
+                },
+                "OutputBucketKey": {
+                    "default": "Output S3 Bucket key when Git2S3 Integration is set to true"
+                },
+                "QSS3BucketName": {
+                    "default": "Quick Start S3 Bucket Name"
+                },
+                "QSS3KeyPrefix": {
+                    "default": "Quick Start S3 Key Prefix"
+                },
+                "BeanstalkSourceStageS3BucketName": {
+                    "default": "Source Stage Bucket for Beanstalk Application"
+                },
+                "BeanstalkSourceStageS3BucketKey": {
+                    "default": "Source Stage Bucket key for Beanstalk Application"
+                },
+                "ExistingBlueEnvironmentName": {
+                    "default": "Provide the Name of an existing Beanstalk Environmemt"
+                },
+                "ExistingBeanstalkApplicationName": {
+                    "default": "Provide the Name of an existing Beanstalk Application"
+                },
+                "NewBlueEnvironmentName": {
+                    "default": "Name for the new Beanstalk environment as the Blue Environment"
+                },
+                "GreenEnvironmentName": {
+                    "default": "Name for the Green Environment"
+                },
+                "NewBeanstalkApplicationName": {
+                    "default": "Name for creating a new Beanstalk Application"
+                },
+                "SolutionStackForNewBeanstalkEnv": {
+                    "default": "Solution Stack for a new Beanstalk Environment"
+                },
+                "AppPackageS3Bucket": {
+                    "default": "Application Package S3 Bucket for creating a new Sample Beanstalk Environment"
+                },
+                "AppPackageS3key": {
+                    "default": "Application Package S3 Key for creating a new Sample Beanstalk Environment"
+                },
+                "AdministratorEmail": {
+                    "default": "Email Address for the Manual Approval Stage"
+                },
+                "NameofthePipeline": {
+                    "default": "Name for the Pipeline"
+                }
+            }
+        }
+    },
+    "Conditions": {
+        "CreateNewBeanstalkEnv": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExistingBlueEnvironmentName"
+                },
+                ""
+            ]
+        },
+        "CreateNewBeanstalkApp": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExistingBeanstalkApplicationName"
+                },
+                ""
+            ]
+        },
+        "CreateGittoS3Integration": {
+            "Fn::Equals": [
+                {
+                    "Ref": "GitToS3integration"
+                },
+                "true"
+            ]
+        },
+        "GovCloudCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "AWS::Region"
+                },
+                "us-gov-west-1"
+            ]
+        },
+        "CreateBucketForBeanstalkSource": {
+            "Fn::And": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "BeanstalkSourceStageS3BucketName"
+                        },
+                        ""
+                    ]
+                },
+                {
+                    "Fn::Not": [
+                        {
+                            "Fn::Equals": [
+                                {
+                                    "Ref": "GitToS3integration"
+                                },
+                                "true"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "CreateSampleAppForBeanstalk": {
+            "Fn::Equals": [
+                {
+                    "Ref": "AppPackageS3Bucket"
+                },
+                "elasticbeanstalk-samples"
+            ]
+        }
+    },
+    "Parameters": {
+        "AdministratorEmail": {
+            "Type": "String",
+            "Default": "kirankuc@amazon.com",
+            "Description": "Provide an administrator email for Pipeline Manual Approval. SNS subscription Email will be sent to this address for the Manual Approval Stage",
+            "AllowedPattern": "^[a-z0-9]+(\\.[_a-z0-9]+)*@[a-z0-9-]+(\\.[a-z0-9-]+)*(\\.[a-z]{2,15})$",
+            "ConstraintDescription": "Can contain only ASCII characters. This must be in the format of username@email.com"
+        },
+        "NameofthePipeline": {
+            "Type": "String",
+            "Default": "BlueGreenCICDPipeline",
+            "Description": "Name of the CICDPipeline used for Blue-Green Deployment"
+        },
+        "BeanstalkSourceStageS3BucketName": {
+            "Type": "String",
+            "Default": "",
+            "Description": "Provide the S3 bucket name where the application package can be uploaded/is uploaded for the CodePipeline Source Stage. If not provided, a bucket will be created. This can be ignored if Git2S3GitToS3integration parameter is set to 'true'"
+        },
+        "BeanstalkSourceStageS3BucketKey": {
+            "Type": "String",
+            "Default": "application-code.zip",
+            "Description": "Provide the zip file name in .zip format that will be uploaded to the SourceStageS3BucketName bucket required by Beanstalk for the CodePipeline Source Stage. This is by default application-code.zip. Please ignore this if Git2S3GitToS3integration parameter is set to 'true'"
+        },
+        "ExistingBlueEnvironmentName": {
+            "Type": "String",
+            "Default": "",
+            "Description": "Provide the Name of the Existing Beanstalk Environment as Blue Environment. Leave in blank if you want to create a new Environment"
+        },
+        "ExistingBeanstalkApplicationName": {
+            "Type": "String",
+            "Default": "",
+            "Description": "Required if the parameter 'ExistingBlueEnvironmentName' is provided. Give the Name of the Existing Beantalk Application where the existing Beanstalk Environment is running. Leave in blank if you want to create a new Application"
+        },
+        "NewBlueEnvironmentName": {
+            "Type": "String",
+            "Default": "BlueEnvironment",
+            "Description": "Provide a name for creating a new Beanstalk Environment as Blue Environment."
+        },
+        "GreenEnvironmentName": {
+            "Type": "String",
+            "Default": "GreenEnvironment",
+            "Description": "Provide a Name for the Green Environment, which will be the clone of the Blue Environment. If not provided, the name will be 'GreenEnvironment' by default"
+        },
+        "NewBeanstalkApplicationName": {
+            "Type": "String",
+            "Default": "BlueGreenBeanstalkApplication",
+            "Description": "Provide a name for a new Beantalk Application where the new Blue Environment and the clone will be created. If not provided, the name will be 'BlueGreenBeanstalkApplication' by default"
+        },
+        "SolutionStackForNewBeanstalkEnv": {
+            "Type": "String",
+            "Default": "64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1",
+            "Description": "Provide a name for the Beanstalk Solution for launching the new Blue Environment. If not provided, the default will be a PHP solution stack. Please refer the following document https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/concepts.platforms.html for all the solution stack values."
+        },
+        "AppPackageS3Bucket": {
+            "Type": "String",
+            "Default": "elasticbeanstalk-samples",
+            "Description": "Provide the S3 bucket where the Application Package exists for creating a new Beanstalk environment. This parameter can be ignored if using an existing Environment."
+        },
+        "AppPackageS3key": {
+            "Type": "String",
+            "Default": "php-sample.zip",
+            "Description": "Provide the S3 bucket key with the zip file package name for creating a new Beanstalk environment. This parameter can be ignored if using an existing Environment"
+        },
+        "GitToS3integration": {
+            "Type": "String",
+            "Default": "false",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Description": "Select 'true' if you want to have GittoS3 integration setup. If not leave it as default 'false' "
+        },
+        "AllowedIps": {
+            "Description": "gitpull method only. Comma seperated list of IP CIDR blocks for source IP authentication. The BitBucket Cloud IP ranges are provided as defaults.",
+            "Type": "String",
+            "Default": "131.103.20.160/27,165.254.145.0/26,104.192.143.0/24"
+        },
+        "ApiSecret": {
+            "Description": "gitpull method only. WebHook Secrets for use with GitHub Enterprise and GitLab. If a secret is matched IP range authentication is bypassed. Cannot contain: , \\ \"",
+            "Type": "String",
+            "Default": "",
+            "NoEcho": "true"
+        },
+        "CustomDomainName": {
+            "Description": "Use a custom domain name for the webhook endpoint, if left blank API Gateway will create a domain name for you",
+            "Type": "String",
+            "Default": ""
+        },
+        "GitToken": {
+            "NoEcho": "true",
+            "Description": "zipdl method only. Personal access token, needed for GitHub Enterprise and GitLab",
+            "Type": "String",
+            "Default": "",
+            "ConstraintDescription": "this token must be generated from the git server/provider"
+        },
+        "OauthKey": {
+            "Description": "zipdl method only. OAuth2 Key needed for BitBucket",
+            "Type": "String",
+            "Default": "",
+            "ConstraintDescription": "this key must be generated from the git server/provider"
+        },
+        "OauthSecret": {
+            "NoEcho": "true",
+            "Description": "zipdl method only. OAuth2 Secret needed for BitBucket",
+            "Type": "String",
+            "Default": "",
+            "ConstraintDescription": "this secret must be generated from the git server/provider"
+        },
+        "OutputBucketName": {
+            "Description": "OPTIONAL: Bucket Name where the zip file output should be placed, if left blank a bucket name will be automatically generated.",
+            "Type": "String",
+            "Default": ""
+        },
+        "OutputBucketKey": {
+            "Description": "OPTIONAL: Bucket Name where the zip file output should be placed, which can be fed as an input to the Pipeline Source Stage. This is mandatory if GitToS3Integration property is set to true",
+            "Type": "String",
+            "Default": "/"
+        },
+        "QSS3BucketName": {
+            "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
+            "ConstraintDescription": "Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Default": "quickstart-reference",
+            "Description": "S3 bucket name for the Quick Start assets. Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Type": "String"
+        },
+        "QSS3KeyPrefix": {
+            "AllowedPattern": "^[0-9a-zA-Z-/]*$",
+            "ConstraintDescription": "Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "codepipeline-bluegreen-deployment/latest/",
+            "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "LambdaZipsBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                },
+                "Tags": []
+            }
+        },
+        "CopyZips": {
+            "Type": "AWS::CloudFormation::CustomResource",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "CopyZipsFunction",
+                        "Arn"
+                    ]
+                },
+                "DestBucket": {
+                    "Ref": "LambdaZipsBucket"
+                },
+                "SourceBucket": {
+                    "Ref": "QSS3BucketName"
+                },
+                "Prefix": {
+                    "Ref": "QSS3KeyPrefix"
+                },
+                "Objects": [
+                    "functions/packages/CreateEnvironment/creategreenenv.zip",
+                    "functions/packages/SwapEnvironments/swapenvironments.zip",
+                    "functions/packages/TestBlueEnvironment/testBlueenvironment.zip",
+                    "functions/packages/TerminateandReSwap/terminategreenenv.zip"
+                ]
+            }
+        },
+        "CopyZipsRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ],
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "lambda-copier",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${QSS3BucketName}/${QSS3KeyPrefix}*"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:DeleteObject",
+                                        "s3:*"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${LambdaZipsBucket}/${QSS3KeyPrefix}*"
+                                        },
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${LambdaZipsBucket}"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "CopyZipsFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Copies objects from a source S3 bucket to a destination",
+                "Handler": "index.handler",
+                "Runtime": "python2.7",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "CopyZipsRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": 240,
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import json",
+                                "import logging",
+                                "import threading",
+                                "import boto3",
+                                "import cfnresponse",
+                                "",
+                                "",
+                                "def copy_objects(source_bucket, dest_bucket, prefix, objects):",
+                                "    s3 = boto3.client('s3')",
+                                "    for o in objects:",
+                                "        key = prefix + o",
+                                "        copy_source = {",
+                                "            'Bucket': source_bucket,",
+                                "            'Key': key",
+                                "        }",
+                                "        s3.copy_object(CopySource=copy_source, Bucket=dest_bucket, Key=key)",
+                                "",
+                                "",
+                                "def delete_objects(bucket):",
+                                "    client = boto3.client('s3')",
+                                "    print(\"Collecting data from\" + bucket)",
+                                "    paginator = client.get_paginator('list_object_versions')",
+                                "    result = paginator.paginate(Bucket=bucket)",
+                                "    objects = []",
+                                "    for page in result:",
+                                "        try:",
+                                "            for k in page['Versions']:",
+                                "                objects.append({'Key':k['Key'],'VersionId': k['VersionId']})",
+                                "            try:",
+                                "                for k in page['DeleteMarkers']:",
+                                "                    version = k['VersionId']",
+                                "                    key = k['Key']",
+                                "                    objects.append({'Key': key,'VersionId': version})",
+                                "            except:",
+                                "                pass",
+                                "            print(\"deleting objects\")",
+                                "            client.delete_objects(Bucket=bucket,     Delete={'Objects': objects})",
+                                "           # objects = []",
+                                "        except:",
+                                "            pass",
+                                "    print(\"bucket already empty\")",
+                                "",
+                                "",
+                                "",
+                                "def timeout(event, context):",
+                                "    logging.error('Execution is about to time out, sending failure response to CloudFormation')",
+                                "    cfnresponse.send(event, context, cfnresponse.FAILED, {}, None)",
+                                "",
+                                "",
+                                "def handler(event, context):",
+                                "    # make sure we send a failure to CloudFormation if the function is going to timeout",
+                                "    timer = threading.Timer((context.get_remaining_time_in_millis() / 1000.00) - 0.5, timeout, args=[event, context])",
+                                "    timer.start()",
+                                "",
+                                "    print('Received event: %s' % json.dumps(event))",
+                                "    status = cfnresponse.SUCCESS",
+                                "    try:",
+                                "        source_bucket = event['ResourceProperties']['SourceBucket']",
+                                "        dest_bucket = event['ResourceProperties']['DestBucket']",
+                                "        prefix = event['ResourceProperties']['Prefix']",
+                                "        objects = event['ResourceProperties']['Objects']",
+                                "        if event['RequestType'] == 'Delete':",
+                                "            delete_objects(dest_bucket)",
+                                "        else:",
+                                "            copy_objects(source_bucket, dest_bucket, prefix, objects)",
+                                "    except Exception as e:",
+                                "        logging.error('Exception: %s' % e, exc_info=True)",
+                                "        status = cfnresponse.FAILED",
+                                "    finally:",
+                                "        timer.cancel()",
+                                "        cfnresponse.send(event, context, status, {}, None)",
+                                ""
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "BeanstalkSourceBucket": {
+            "Condition": "CreateBucketForBeanstalkSource",
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                },
+                "Tags": []
+            }
+        },
+        "EmptyBeanstalkSourceBucketRole": {
+            "Condition": "CreateBucketForBeanstalkSource",
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ],
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "lambda-copier",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:DeleteObject",
+                                        "s3:*"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${BeanstalkSourceBucket}"
+                                        },
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${BeanstalkSourceBucket}/*"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "EmptyBeanstalkSourceBucketCleanup": {
+            "Condition": "CreateBucketForBeanstalkSource",
+            "Type": "AWS::CloudFormation::CustomResource",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "EmptyBeanstalkSourceBucketFunction",
+                        "Arn"
+                    ]
+                },
+                "DestBucket": {
+                    "Ref": "BeanstalkSourceBucket"
+                }
+            }
+        },
+        "EmptyBeanstalkSourceBucketFunction": {
+            "Condition": "CreateBucketForBeanstalkSource",
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Copies objects from a source S3 bucket to a destination",
+                "Handler": "index.handler",
+                "Runtime": "python2.7",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "EmptyBeanstalkSourceBucketRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": 240,
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import json",
+                                "import logging",
+                                "import threading",
+                                "import boto3",
+                                "import cfnresponse",
+                                "",
+                                "",
+                                "",
+                                "def delete_objects(bucket):",
+                                "    client = boto3.client('s3')",
+                                "    print(\"Collecting data from\" + bucket)",
+                                "    paginator = client.get_paginator('list_object_versions')",
+                                "    result = paginator.paginate(Bucket=bucket)",
+                                "    objects = []",
+                                "    for page in result:",
+                                "        try:",
+                                "            for k in page['Versions']:",
+                                "                objects.append({'Key':k['Key'],'VersionId': k['VersionId']})",
+                                "            try:",
+                                "                for k in page['DeleteMarkers']:",
+                                "                    version = k['VersionId']",
+                                "                    key = k['Key']",
+                                "                    objects.append({'Key': key,'VersionId': version})",
+                                "            except:",
+                                "                pass",
+                                "            print(\"deleting objects\")",
+                                "            client.delete_objects(Bucket=bucket,     Delete={'Objects': objects})",
+                                "           # objects = []",
+                                "        except:",
+                                "            pass",
+                                "    print(\"bucket already empty\")",
+                                "",
+                                "",
+                                "",
+                                "def timeout(event, context):",
+                                "    logging.error('Execution is about to time out, sending failure response to CloudFormation')",
+                                "    cfnresponse.send(event, context, cfnresponse.FAILED, {}, None)",
+                                "",
+                                "",
+                                "def handler(event, context):",
+                                "    # make sure we send a failure to CloudFormation if the function is going to timeout",
+                                "    timer = threading.Timer((context.get_remaining_time_in_millis() / 1000.00) - 0.5, timeout, args=[event, context])",
+                                "    timer.start()",
+                                "",
+                                "    print('Received event: %s' % json.dumps(event))",
+                                "    status = cfnresponse.SUCCESS",
+                                "    try:",
+                                "        dest_bucket = event['ResourceProperties']['DestBucket']",
+                                "        if event['RequestType'] == 'Delete':",
+                                "            delete_objects(dest_bucket)",
+                                "        else:",
+                                "            print(\"Nothing to do\")",
+                                "    except Exception as e:",
+                                "        logging.error('Exception: %s' % e, exc_info=True)",
+                                "        status = cfnresponse.FAILED",
+                                "    finally:",
+                                "        timer.cancel()",
+                                "        cfnresponse.send(event, context, status, {}, None)",
+                                ""
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "BlueGreenCICDPipeline": {
+            "Type": "AWS::CodePipeline::Pipeline",
+            "Properties": {
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "PipelineServiceRole",
+                        "Arn"
+                    ]
+                },
+                "Stages": [
+                    {
+                        "Name": "SourceForElasticBeanstalk",
+                        "Actions": [
+                            {
+                                "Name": "SourceForElasticBeanstalk",
+                                "ActionTypeId": {
+                                    "Category": "Source",
+                                    "Owner": "AWS",
+                                    "Version": "1",
+                                    "Provider": "S3"
+                                },
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": "ElasticBeanstalkPackage"
+                                    }
+                                ],
+                                "Configuration": {
+                                    "S3Bucket": {
+                                        "Fn::If": [
+                                            "CreateGittoS3Integration",
+                                            {
+                                                "Fn::GetAtt": [
+                                                    "GittoS3Integration",
+                                                    "Outputs.OutputBucketName"
+                                                ]
+                                            },
+                                            {
+                                                "Fn::If": [
+                                                    "CreateBucketForBeanstalkSource",
+                                                    {
+                                                        "Ref": "BeanstalkSourceBucket"
+                                                    },
+                                                    {
+                                                        "Ref": "BeanstalkSourceStageS3BucketName"
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    "S3ObjectKey": {
+                                        "Fn::If": [
+                                            "CreateGittoS3Integration",
+                                            {
+                                                "Ref": "OutputBucketKey"
+                                            },
+                                            {
+                                                "Ref": "BeanstalkSourceStageS3BucketKey"
+                                            }
+                                        ]
+                                    },
+                                    "PollForSourceChanges": "true"
+                                },
+                                "RunOrder": 1
+                            },
+                            {
+                                "Name": "SourceForCodeBuildStage",
+                                "ActionTypeId": {
+                                    "Category": "Source",
+                                    "Owner": "AWS",
+                                    "Version": "1",
+                                    "Provider": "S3"
+                                },
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": "UrlSwapPackage"
+                                    }
+                                ],
+                                "Configuration": {
+                                    "S3Bucket": {
+                                        "Ref": "LambdaZipsBucket"
+                                    },
+                                    "S3ObjectKey": {
+                                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/SwapEnvironments/swapenvironments.zip"
+                                    },
+                                    "PollForSourceChanges": "false"
+                                },
+                                "RunOrder": 2
+                            },
+                            {
+                                "Name": "SourceForCodeBuildTestStage",
+                                "ActionTypeId": {
+                                    "Category": "Source",
+                                    "Owner": "AWS",
+                                    "Version": "1",
+                                    "Provider": "S3"
+                                },
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": "BlueEnvTestPackage"
+                                    }
+                                ],
+                                "Configuration": {
+                                    "S3Bucket": {
+                                        "Ref": "LambdaZipsBucket"
+                                    },
+                                    "S3ObjectKey": {
+                                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/TestBlueEnvironment/testBlueenvironment.zip"
+                                    },
+                                    "PollForSourceChanges": "false"
+                                },
+                                "RunOrder": 2
+                            }
+                        ]
+                    },
+                    {
+                        "Name": "Lambda",
+                        "Actions": [
+                            {
+                                "Name": "LambdaFunctionForNewEnvCreation",
+                                "ActionTypeId": {
+                                    "Category": "Invoke",
+                                    "Owner": "AWS",
+                                    "Version": "1",
+                                    "Provider": "Lambda"
+                                },
+                                "Configuration": {
+                                    "FunctionName": {
+                                        "Ref": "CreateCloneLambdaFunction"
+                                    },
+                                    "UserParameters": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "{\"BlueEnvName\":\"",
+                                                {
+                                                    "Fn::If": [
+                                                        "CreateNewBeanstalkEnv",
+                                                        {
+                                                            "Ref": "NewBlueEnvironmentName"
+                                                        },
+                                                        {
+                                                            "Ref": "ExistingBlueEnvironmentName"
+                                                        }
+                                                    ]
+                                                },
+                                                "\",\"GreenEnvName\":\"",
+                                                {
+                                                    "Ref": "GreenEnvironmentName"
+                                                },
+                                                "\",\"BlueCNAMEConfigBucket\":\"",
+                                                {
+                                                    "Ref": "LambdaZipsBucket"
+                                                },
+                                                "\",\"BeanstalkAppName\":\"",
+                                                {
+                                                    "Fn::If": [
+                                                        "CreateNewBeanstalkApp",
+                                                        {
+                                                            "Ref": "NewBeanstalkApplicationName"
+                                                        },
+                                                        {
+                                                            "Ref": "ExistingBeanstalkApplicationName"
+                                                        }
+                                                    ]
+                                                },
+                                                "\",\"CreateConfigTempName\":\"BlueEnvConfig",
+                                                "\",\"BlueCNAMEConfigFile\":\"bluecnameconfig.json",
+                                                "\"}"
+                                            ]
+                                        ]
+                                    }
+                                },
+                                "RunOrder": 1
+                            }
+                        ]
+                    },
+                    {
+                        "Name": "ManualApprovalForUrlSwap",
+                        "Actions": [
+                            {
+                                "InputArtifacts": [],
+                                "Name": "manualapp",
+                                "ActionTypeId": {
+                                    "Category": "Approval",
+                                    "Owner": "AWS",
+                                    "Version": "1",
+                                    "Provider": "Manual"
+                                },
+                                "OutputArtifacts": [],
+                                "Configuration": {
+                                    "NotificationArn": {
+                                        "Ref": "ManualApprovalSNSTopic"
+                                    }
+                                },
+                                "RunOrder": 1
+                            }
+                        ]
+                    },
+                    {
+                        "Name": "SwapUrlCodeBuild",
+                        "Actions": [
+                            {
+                                "InputArtifacts": [
+                                    {
+                                        "Name": "UrlSwapPackage"
+                                    }
+                                ],
+                                "Name": "SwapUrlBeanstalk",
+                                "ActionTypeId": {
+                                    "Category": "Test",
+                                    "Owner": "AWS",
+                                    "Version": "1",
+                                    "Provider": "CodeBuild"
+                                },
+                                "Configuration": {
+                                    "ProjectName": {
+                                        "Ref": "MyCodeBuildswapserver"
+                                    }
+                                },
+                                "RunOrder": 1
+                            }
+                        ]
+                    },
+                    {
+                        "Name": "DeploytoBlueEnvironment",
+                        "Actions": [
+                            {
+                                "InputArtifacts": [
+                                    {
+                                        "Name": "ElasticBeanstalkPackage"
+                                    }
+                                ],
+                                "Name": "BeanstalkBlueDeploy",
+                                "ActionTypeId": {
+                                    "Category": "Deploy",
+                                    "Owner": "AWS",
+                                    "Version": "1",
+                                    "Provider": "ElasticBeanstalk"
+                                },
+                                "Configuration": {
+                                    "ApplicationName": {
+                                        "Fn::If": [
+                                            "CreateNewBeanstalkApp",
+                                            {
+                                                "Ref": "NewBeanstalkApplicationName"
+                                            },
+                                            {
+                                                "Ref": "ExistingBeanstalkApplicationName"
+                                            }
+                                        ]
+                                    },
+                                    "EnvironmentName": {
+                                        "Fn::If": [
+                                            "CreateNewBeanstalkEnv",
+                                            {
+                                                "Ref": "BeanstalkEnvironment"
+                                            },
+                                            {
+                                                "Ref": "ExistingBlueEnvironmentName"
+                                            }
+                                        ]
+                                    }
+                                },
+                                "RunOrder": 1
+                            }
+                        ]
+                    },
+                    {
+                        "Name": "BlueEnvTestCodeBuild",
+                        "Actions": [
+                            {
+                                "InputArtifacts": [
+                                    {
+                                        "Name": "BlueEnvTestPackage"
+                                    }
+                                ],
+                                "Name": "BlueEnvTestBeanstalk",
+                                "ActionTypeId": {
+                                    "Category": "Test",
+                                    "Owner": "AWS",
+                                    "Version": "1",
+                                    "Provider": "CodeBuild"
+                                },
+                                "Configuration": {
+                                    "ProjectName": {
+                                        "Ref": "MyCodeBuildtestserver"
+                                    }
+                                },
+                                "RunOrder": 1
+                            }
+                        ]
+                    },
+                    {
+                        "Name": "ReswapAndCleanUpGreenEnv",
+                        "Actions": [
+                            {
+                                "Name": "ReswapAndCleanUpGreenEnv",
+                                "ActionTypeId": {
+                                    "Category": "Invoke",
+                                    "Owner": "AWS",
+                                    "Version": "1",
+                                    "Provider": "Lambda"
+                                },
+                                "Configuration": {
+                                    "FunctionName": {
+                                        "Ref": "TerminateGreenEnvLambdaFunction"
+                                    },
+                                    "UserParameters": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "{\"BlueEnvName\":\"",
+                                                {
+                                                    "Fn::If": [
+                                                        "CreateNewBeanstalkEnv",
+                                                        {
+                                                            "Ref": "BeanstalkEnvironment"
+                                                        },
+                                                        {
+                                                            "Ref": "ExistingBlueEnvironmentName"
+                                                        }
+                                                    ]
+                                                },
+                                                "\",\"GreenEnvName\":\"",
+                                                {
+                                                    "Ref": "GreenEnvironmentName"
+                                                },
+                                                "\",\"BlueCNAMEConfigBucket\":\"",
+                                                {
+                                                    "Ref": "LambdaZipsBucket"
+                                                },
+                                                "\",\"BeanstalkAppName\":\"",
+                                                {
+                                                    "Fn::If": [
+                                                        "CreateNewBeanstalkApp",
+                                                        {
+                                                            "Ref": "NewBeanstalkApplicationName"
+                                                        },
+                                                        {
+                                                            "Ref": "ExistingBeanstalkApplicationName"
+                                                        }
+                                                    ]
+                                                },
+                                                "\",\"CreateConfigTempName\":\"BlueEnvConfig",
+                                                "\",\"BlueCNAMEConfigFile\":\"bluecnameconfig.json",
+                                                "\"}"
+                                            ]
+                                        ]
+                                    }
+                                },
+                                "RunOrder": 1
+                            }
+                        ]
+                    }
+                ],
+                "ArtifactStore": {
+                    "Type": "S3",
+                    "Location": {
+                        "Ref": "CodePipelineArtifactStore"
+                    }
+                },
+                "Name": {
+                    "Ref": "NameofthePipeline"
+                }
+            }
+        },
+        "CodePipelineArtifactStore": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "Tags": []
+            }
+        },
+        "ArtifactStoreCleanUpLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Copies objects from a source S3 bucket to a destination",
+                "Handler": "index.handler",
+                "Runtime": "python2.7",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ArtifactCleanUpRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": 240,
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import json",
+                                "import logging",
+                                "import threading",
+                                "import boto3",
+                                "import cfnresponse",
+                                "",
+                                "",
+                                "def delete_objects(bucket):",
+                                "    client = boto3.client('s3')",
+                                "    print(\"Collecting data from\" + bucket)",
+                                "    paginator =     client.get_paginator('list_objects_v2')",
+                                "    result = paginator.paginate(Bucket=bucket)",
+                                "    objects = []",
+                                "    for page in result:",
+                                "        try:",
+                                "            for k in page['Contents']:",
+                                "                objects.append({'Key': k['Key']})",
+                                "                print(\"deleting objects\")",
+                                "                client.delete_objects(Bucket=bucket, Delete={'Objects': objects})",
+                                "                objects = []",
+                                "        except:",
+                                "            pass",
+                                "            print(\"bucket is already empty\")",
+                                "",
+                                "def timeout(event, context):",
+                                "    logging.error('Execution is about to time out, sending failure response to CloudFormation')",
+                                "    cfnresponse.send(event, context, cfnresponse.FAILED, {}, None)",
+                                "",
+                                "",
+                                "def handler(event, context):",
+                                "    # make sure we send a failure to CloudFormation if the function is going to timeout",
+                                "    timer = threading.Timer((context.get_remaining_time_in_millis() / 1000.00) - 0.5, timeout, args=[event, context])",
+                                "    timer.start()",
+                                "",
+                                "    print('Received event: %s' % json.dumps(event))",
+                                "    status = cfnresponse.SUCCESS",
+                                "    try:",
+                                "        dest_bucket = event['ResourceProperties']['DestBucket']",
+                                "        if event['RequestType'] == 'Delete':",
+                                "            delete_objects(dest_bucket)",
+                                "        else:",
+                                "            print(\"Nothing to do\")",
+                                "    except Exception as e:",
+                                "        logging.error('Exception: %s' % e, exc_info=True)",
+                                "        status = cfnresponse.FAILED",
+                                "    finally:",
+                                "        timer.cancel()",
+                                "        cfnresponse.send(event, context, status, {}, None)",
+                                ""
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "ArtifactCleanUpRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ],
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "lambda-copier",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:DeleteObject",
+                                        "s3:GetObject",
+                                        "s3:ListBucket"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${CodePipelineArtifactStore}/*"
+                                        },
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${CodePipelineArtifactStore}"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "CodePipelineArtifactStoreCleanUp": {
+            "Type": "AWS::CloudFormation::CustomResource",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "ArtifactStoreCleanUpLambdaFunction",
+                        "Arn"
+                    ]
+                },
+                "DestBucket": {
+                    "Ref": "CodePipelineArtifactStore"
+                }
+            }
+        },
+        "PipelineServiceRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "codepipeline.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "codepipelinepolicy",
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:GetObjectVersion",
+                                        "s3:GetBucketVersioning"
+                                    ],
+                                    "Resource": "*",
+                                    "Effect": "Allow"
+                                },
+                                {
+                                    "Action": [
+                                        "s3:PutObject"
+                                    ],
+                                    "Resource": [
+                                        "arn:aws:s3:::codepipeline*",
+                                        "arn:aws:s3:::elasticbeanstalk*"
+                                    ],
+                                    "Effect": "Allow"
+                                },
+                                {
+                                    "Action": [
+                                        "elasticbeanstalk:*",
+                                        "ec2:*",
+                                        "elasticloadbalancing:*",
+                                        "autoscaling:*",
+                                        "cloudwatch:*",
+                                        "s3:*",
+                                        "sns:*",
+                                        "cloudformation:*",
+                                        "rds:*",
+                                        "sqs:*",
+                                        "ecs:*",
+                                        "iam:PassRole"
+                                    ],
+                                    "Resource": "*",
+                                    "Effect": "Allow"
+                                },
+                                {
+                                    "Action": [
+                                        "lambda:InvokeFunction",
+                                        "lambda:ListFunctions"
+                                    ],
+                                    "Resource": "*",
+                                    "Effect": "Allow"
+                                },
+                                {
+                                    "Action": [
+                                        "codebuild:BatchGetBuilds",
+                                        "codebuild:StartBuild"
+                                    ],
+                                    "Resource": "*",
+                                    "Effect": "Allow"
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        }
+                    }
+                ]
+            }
+        },
+        "BuildServiceRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "codebuild.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "codebuildpolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "CloudWatchLogsPolicy",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                },
+                                {
+                                    "Sid": "S3GetObjectPolicy",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:ListObjects",
+                                        "s3:GetObjectVersion"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                },
+                                {
+                                    "Sid": "S3PutObjectPolicy",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                },
+                                {
+                                    "Sid": "EBAccess",
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "elasticbeanstalk:SwapEnvironmentCNAMEs",
+                                        "elasticbeanstalk:Describe*",
+                                        "cloudformation:GetTemplate"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "CreateCloneLambdaFunction": {
+            "DependsOn": "CopyZips",
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python3.6",
+                "Timeout": 300,
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "LambdaZipsBucket"
+                    },
+                    "S3Key": {
+                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/CreateEnvironment/creategreenenv.zip"
+                    }
+                }
+            }
+        },
+        "TerminateGreenEnvLambdaFunction": {
+            "DependsOn": "CopyZips",
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python3.6",
+                "Timeout": 300,
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "LambdaZipsBucket"
+                    },
+                    "S3Key": {
+                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/TerminateandReSwap/terminategreenenv.zip"
+                    }
+                }
+            }
+        },
+        "LambdaExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/AWSElasticBeanstalkFullAccess"
+                ],
+                "Policies": [
+                    {
+                        "PolicyName": "CodePipelinePutSuccessFailurePolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "codepipeline:PutJobSuccessResult",
+                                        "codepipeline:PutJobFailureResult"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "MyCodeBuildswapserver": {
+            "Type": "AWS::CodeBuild::Project",
+            "Properties": {
+                "Name": "CICDurlSwap",
+                "Description": "CodeBuild Server to swap the urls between the Blue and Green Environments ",
+                "ServiceRole": {
+                    "Fn::GetAtt": [
+                        "BuildServiceRole",
+                        "Arn"
+                    ]
+                },
+                "Artifacts": {
+                    "Type": "CODEPIPELINE"
+                },
+                "Environment": {
+                    "Type": "LINUX_CONTAINER",
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "Image": "aws/codebuild/ubuntu-base:14.04",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "BlueEnvName",
+                            "Value": {
+                                "Fn::If": [
+                                    "CreateNewBeanstalkEnv",
+                                    {
+                                        "Ref": "NewBlueEnvironmentName"
+                                    },
+                                    {
+                                        "Ref": "ExistingBlueEnvironmentName"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "Name": "GreenEnvName",
+                            "Value": {
+                                "Ref": "GreenEnvironmentName"
+                            }
+                        },
+                        {
+                            "Name": "BlueCNAMEConfigBucket",
+                            "Value": {
+                                "Ref": "LambdaZipsBucket"
+                            }
+                        },
+                        {
+                            "Name": "BlueCNAMEConfigFile",
+                            "Value": "bluecnameconfig.json"
+                        }
+                    ]
+                },
+                "Source": {
+                    "Type": "CODEPIPELINE"
+                },
+                "TimeoutInMinutes": 60
+            }
+        },
+        "MyCodeBuildtestserver": {
+            "Type": "AWS::CodeBuild::Project",
+            "Properties": {
+                "Name": "CICDBlueDeploymentTest",
+                "Description": "CodeBuild Test Server for the Blue Environment after new deployment",
+                "ServiceRole": {
+                    "Fn::GetAtt": [
+                        "BuildServiceRole",
+                        "Arn"
+                    ]
+                },
+                "Artifacts": {
+                    "Type": "CODEPIPELINE"
+                },
+                "Environment": {
+                    "Type": "LINUX_CONTAINER",
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "Image": "aws/codebuild/ubuntu-base:14.04",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "BlueEnvName",
+                            "Value": {
+                                "Fn::If": [
+                                    "CreateNewBeanstalkEnv",
+                                    {
+                                        "Ref": "BeanstalkEnvironment"
+                                    },
+                                    {
+                                        "Ref": "ExistingBlueEnvironmentName"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "Name": "GreenEnvName",
+                            "Value": {
+                                "Ref": "GreenEnvironmentName"
+                            }
+                        },
+                        {
+                            "Name": "BlueCNAMEConfigFile",
+                            "Value": "bluecnameconfig.json"
+                        }
+                    ]
+                },
+                "Source": {
+                    "Type": "CODEPIPELINE"
+                },
+                "TimeoutInMinutes": 60
+            }
+        },
+        "BeanstalkAppVersion": {
+            "Condition": "CreateNewBeanstalkEnv",
+            "Type": "AWS::ElasticBeanstalk::ApplicationVersion",
+            "Properties": {
+                "ApplicationName": {
+                    "Fn::If": [
+                        "CreateNewBeanstalkApp",
+                        {
+                            "Ref": "BeanstalkApplication"
+                        },
+                        {
+                            "Ref": "ExistingBeanstalkApplicationName"
+                        }
+                    ]
+                },
+                "Description": "my sample version",
+                "SourceBundle": {
+                    "S3Bucket": {
+                        "Fn::If": [
+                            "CreateSampleAppForBeanstalk",
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        {
+                                            "Ref": "AppPackageS3Bucket"
+                                        },
+                                        "-",
+                                        {
+                                            "Ref": "AWS::Region"
+                                        }
+                                    ]
+                                ]
+                            },
+                            {
+                                "Ref": "AppPackageS3Bucket"
+                            }
+                        ]
+                    },
+                    "S3Key": {
+                        "Ref": "AppPackageS3key"
+                    }
+                }
+            }
+        },
+        "BeanstalkApplication": {
+            "Condition": "CreateNewBeanstalkApp",
+            "Type": "AWS::ElasticBeanstalk::Application",
+            "Properties": {
+                "ApplicationName": {
+                    "Ref": "NewBeanstalkApplicationName"
+                },
+                "Description": "AWS Elastic Beanstalk PHP Sample Application"
+            }
+        },
+        "BeanstalkEnvironment": {
+            "Condition": "CreateNewBeanstalkEnv",
+            "Type": "AWS::ElasticBeanstalk::Environment",
+            "Properties": {
+                "ApplicationName": {
+                    "Fn::If": [
+                        "CreateNewBeanstalkApp",
+                        {
+                            "Ref": "BeanstalkApplication"
+                        },
+                        {
+                            "Ref": "ExistingBeanstalkApplicationName"
+                        }
+                    ]
+                },
+                "Description": "AWS Elastic Beanstalk Environment running PHP Sample Application",
+                "EnvironmentName": {
+                    "Ref": "NewBlueEnvironmentName"
+                },
+                "SolutionStackName": {
+                    "Ref": "SolutionStackForNewBeanstalkEnv"
+                },
+                "VersionLabel": {
+                    "Ref": "BeanstalkAppVersion"
+                },
+                "OptionSettings": [
+                    {
+                        "Namespace": "aws:autoscaling:launchconfiguration",
+                        "OptionName": "IamInstanceProfile",
+                        "Value": {
+                            "Ref": "BeanstalkInstanceProfile"
+                        }
+                    },
+                    {
+                        "Namespace": "aws:elasticbeanstalk:environment",
+                        "OptionName": "ServiceRole",
+                        "Value": {
+                            "Ref": "BeanstalkServiceRole"
+                        }
+                    }
+                ]
+            }
+        },
+        "BeanstalkServiceRole": {
+            "Condition": "CreateNewBeanstalkEnv",
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "elasticbeanstalk.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole",
+                            "Condition": {
+                                "StringEquals": {
+                                    "sts:ExternalId": "elasticbeanstalk"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "elasticloadbalancing:DescribeInstanceHealth",
+                                        "ec2:DescribeInstances",
+                                        "ec2:DescribeInstanceStatus",
+                                        "ec2:GetConsoleOutput",
+                                        "ec2:AssociateAddress",
+                                        "ec2:DescribeAddresses",
+                                        "ec2:DescribeSecurityGroups",
+                                        "sqs:GetQueueAttributes",
+                                        "sqs:GetQueueUrl",
+                                        "autoscaling:DescribeAutoScalingGroups",
+                                        "autoscaling:DescribeAutoScalingInstances",
+                                        "autoscaling:DescribeScalingActivities",
+                                        "autoscaling:DescribeNotificationConfigurations"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "Path": "/"
+            }
+        },
+        "BeanstalkInstanceProfile": {
+            "Condition": "CreateNewBeanstalkEnv",
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Path": "/",
+                "Roles": [
+                    {
+                        "Ref": "BeanstalkInstanceProfileRole"
+                    }
+                ]
+            }
+        },
+        "BeanstalkInstanceProfileRole": {
+            "Condition": "CreateNewBeanstalkEnv",
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Sid": "BucketAccess",
+                                    "Action": [
+                                        "s3:Get*",
+                                        "s3:List*",
+                                        "s3:PutObject"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":s3:::elasticbeanstalk-*-",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":s3:::elasticbeanstalk-*-",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    "/*"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":s3:::elasticbeanstalk-*-",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    "-*"
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:",
+                                                    {
+                                                        "Ref": "AWS::Partition"
+                                                    },
+                                                    ":s3:::elasticbeanstalk-*-",
+                                                    {
+                                                        "Ref": "AWS::AccountId"
+                                                    },
+                                                    "-*/*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Sid": "MetricsAccess",
+                                    "Action": [
+                                        "cloudwatch:PutMetricData"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Sid": "CloudWatchLogsAccess",
+                                    "Action": [
+                                        "logs:PutLogEvents",
+                                        "logs:CreateLogStream",
+                                        "logs:DescribeLogStreams",
+                                        "logs:DescribeLogGroups"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "arn:aws:logs:*:*:log-group:/aws/elasticbeanstalk*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "Path": "/"
+            }
+        },
+        "ManualApprovalSNSTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "Subscription": [
+                    {
+                        "Endpoint": {
+                            "Ref": "AdministratorEmail"
+                        },
+                        "Protocol": "email"
+                    }
+                ]
+            }
+        },
+        "GittoS3Integration": {
+            "Condition": "CreateGittoS3Integration",
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": {
+                    "Fn::Sub": [
+                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-git2s3/templates/git2s3.template",
+                        {
+                            "QSS3Region": {
+                                "Fn::If": [
+                                    "GovCloudCondition",
+                                    "s3-us-gov-west-1",
+                                    "s3"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Parameters": {
+                    "AllowedIps": {
+                        "Ref": "AllowedIps"
+                    },
+                    "ApiSecret": {
+                        "Ref": "ApiSecret"
+                    },
+                    "CustomDomainName": {
+                        "Ref": "CustomDomainName"
+                    },
+                    "GitToken": {
+                        "Ref": "GitToken"
+                    },
+                    "OauthKey": {
+                        "Ref": "OauthKey"
+                    },
+                    "OauthSecret": {
+                        "Ref": "OauthSecret"
+                    },
+                    "OutputBucketName": {
+                        "Ref": "OutputBucketName"
+                    }
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "NewBeanstalkEnvEndPointUrl": {
+            "Condition": "CreateNewBeanstalkEnv",
+            "Description": "New Beanstalk Environment Endpoint URL",
+            "Value": {
+                "Fn::GetAtt": [
+                    "BeanstalkEnvironment",
+                    "EndpointURL"
+                ]
+            }
+        },
+        "CustomDomainNameCNAME": {
+            "Condition": "CreateGittoS3Integration",
+            "Description": "One of the Git2S3Integration Output",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GittoS3Integration",
+                    "Outputs.CustomDomainNameCNAME"
+                ]
+            }
+        },
+        "PublicSSHKey": {
+            "Condition": "CreateGittoS3Integration",
+            "Description": "One of the Git2S3Integration Output",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GittoS3Integration",
+                    "Outputs.PublicSSHKey"
+                ]
+            }
+        },
+        "GitPullWebHookApi": {
+            "Condition": "CreateGittoS3Integration",
+            "Description": "One of the Git2S3Integration Output",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GittoS3Integration",
+                    "Outputs.GitPullWebHookApi"
+                ]
+            }
+        },
+        "ZipDownloadWebHookApi": {
+            "Condition": "CreateGittoS3Integration",
+            "Description": "One of the Git2S3Integration Output",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GittoS3Integration",
+                    "Outputs.ZipDownloadWebHookApi"
+                ]
+            }
+        },
+        "OutputBucketName": {
+            "Condition": "CreateGittoS3Integration",
+            "Description": "One of the Git2S3Integration Output",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GittoS3Integration",
+                    "Outputs.OutputBucketName"
+                ]
+            }
+        },
+        "CodePipelineName": {
+            "Description": "Name of the Pipeline",
+            "Value": "BlueGreenCICDPipeline"
+        },
+        "BlueEnvironmentName": {
+            "Description": "Name of the Blue Environment",
+            "Value": {
+                "Fn::If": [
+                    "CreateNewBeanstalkEnv",
+                    {
+                        "Ref": "BeanstalkEnvironment"
+                    },
+                    {
+                        "Ref": "ExistingBlueEnvironmentName"
+                    }
+                ]
+            }
+        },
+        "GreenEnvironmentName": {
+            "Description": "Name of the Green Environment",
+            "Value": {
+                "Ref": "GreenEnvironmentName"
+            }
+        },
+        "BeanstalkSourceBucketName": {
+            "Description": "Name of the bucket where the application code should be uploaded if GitToS3integration is set to 'false'",
+            "Value": {
+                "Fn::If": [
+                    "CreateBucketForBeanstalkSource",
+                    {
+                        "Ref": "BeanstalkSourceBucket"
+                    },
+                    {
+                        "Ref": "BeanstalkSourceStageS3BucketName"
+                    }
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,11 @@
+---
+global:
+  owner: kirankuc@amazon.com
+  qsname: quickstart-codepipeline-bluegreen-deployment
+  regions:
+    - us-east-2
+  reporting: true
+tests:
+  taskcat:
+    parameter_input: input1.json
+    template_file: quickstart-codepipeline-bluegreen-deployment.template
