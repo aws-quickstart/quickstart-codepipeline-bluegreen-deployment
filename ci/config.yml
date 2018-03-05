@@ -21,6 +21,9 @@ global:
     - eu-central-1
   reporting: true
 tests:
-  taskcat:
+  test-withoutGittoS3: #test without GittoS3 Integration enabled
     parameter_input: input.json
-    template_file: quickstart-codepipeline-bluegreen-deployment.template
+    template_file: quickstart-codepipeline-bluegreen-deployment_Master.template
+  test-withGittoS3: #test with GittoS3 Integration enabled
+    parameter_input: input1.json
+    template_file: quickstart-codepipeline-bluegreen-deployment_Master.template
