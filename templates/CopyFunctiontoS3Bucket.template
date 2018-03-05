@@ -1,0 +1,499 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Copy Function template that creates the Asset bucket for Lambda and uploads the code.",
+    "Conditions": {
+        "CreateBucketForBeanstalkSource": {
+            "Fn::And": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "BeanstalkSourceStageS3BucketName"
+                        },
+                        ""
+                    ]
+                },
+                {
+                    "Fn::Not": [
+                        {
+                            "Fn::Equals": [
+                                {
+                                    "Ref": "GitToS3integration"
+                                },
+                                "true"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    "Parameters": {
+        "QSS3BucketName": {
+            "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
+            "ConstraintDescription": "Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Default": "quickstart-reference",
+            "Description": "S3 bucket name for the Quick Start assets. Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Type": "String"
+        },
+        "QSS3KeyPrefix": {
+            "AllowedPattern": "^[0-9a-zA-Z-/]*$",
+            "ConstraintDescription": "Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "codepipeline-bluegreen-deployment/latest/",
+            "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Type": "String"
+        },
+        "GitToS3integration": {
+            "Type": "String",
+            "Default": "false",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Description": "Select 'true' if you want to have GittoS3 integration setup. If not leave it as default 'false' "
+        },
+        "BeanstalkSourceStageS3BucketName": {
+            "Type": "String",
+            "Default": "",
+            "Description": "Provide the S3 bucket name where the application package can be uploaded/is uploaded for the CodePipeline Source Stage. If not provided, a bucket will be created. This can be ignored if Git2S3GitToS3integration parameter is set to 'true'"
+        }
+    },
+    "Resources": {
+        "LambdaZipsBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                },
+                "Tags": []
+            }
+        },
+        "CopyZips": {
+            "Type": "AWS::CloudFormation::CustomResource",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "CopyZipsFunction",
+                        "Arn"
+                    ]
+                },
+                "DestBucket": {
+                    "Ref": "LambdaZipsBucket"
+                },
+                "SourceBucket": {
+                    "Ref": "QSS3BucketName"
+                },
+                "Prefix": {
+                    "Ref": "QSS3KeyPrefix"
+                },
+                "Objects": [
+                    "functions/packages/CreateEnvironment/creategreenenv.zip",
+                    "functions/packages/SwapEnvironments/swapenvironments.zip",
+                    "functions/packages/TestBlueEnvironment/testBlueenvironment.zip",
+                    "functions/packages/TerminateandReSwap/terminategreenenv.zip"
+                ]
+            }
+        },
+        "CopyZipsRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ],
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "lambda-copier",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${QSS3BucketName}/${QSS3KeyPrefix}*"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:DeleteObject",
+                                        "s3:GetObject",
+                                        "s3:ListBucket",
+                                        "s3:ListBucketVersions",
+                                        "s3:DeleteObjectVersion",
+                                        "s3:GetObjectVersion",
+                                        "s3:GetBucketVersioning"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${LambdaZipsBucket}/${QSS3KeyPrefix}*"
+                                        },
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${LambdaZipsBucket}"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "CopyZipsFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Copies objects from a source S3 bucket to a destination",
+                "Handler": "index.handler",
+                "Runtime": "python2.7",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "CopyZipsRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": 240,
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import json",
+                                "import logging",
+                                "import threading",
+                                "import boto3",
+                                "import cfnresponse",
+                                "",
+                                "",
+                                "def copy_objects(source_bucket, dest_bucket, prefix, objects):",
+                                "    s3 = boto3.client('s3')",
+                                "    for o in objects:",
+                                "        key = prefix + o",
+                                "        copy_source = {",
+                                "            'Bucket': source_bucket,",
+                                "            'Key': key",
+                                "        }",
+                                "        s3.copy_object(CopySource=copy_source, Bucket=dest_bucket, Key=key)",
+                                "",
+                                "",
+                                "def delete_objects(bucket):",
+                                "    client = boto3.client('s3')",
+                                "    print(\"Collecting data from\" + bucket)",
+                                "    paginator = client.get_paginator('list_object_versions')",
+                                "    result = paginator.paginate(Bucket=bucket)",
+                                "    objects = []",
+                                "    for page in result:",
+                                "        try:",
+                                "            for k in page['Versions']:",
+                                "                objects.append({'Key':k['Key'],'VersionId': k['VersionId']})",
+                                "            try:",
+                                "                for k in page['DeleteMarkers']:",
+                                "                    version = k['VersionId']",
+                                "                    key = k['Key']",
+                                "                    objects.append({'Key': key,'VersionId': version})",
+                                "            except:",
+                                "                pass",
+                                "            print(\"deleting objects\")",
+                                "            client.delete_objects(Bucket=bucket,     Delete={'Objects': objects})",
+                                "           # objects = []",
+                                "        except:",
+                                "            pass",
+                                "    print(\"bucket already empty\")",
+                                "",
+                                "",
+                                "",
+                                "def timeout(event, context):",
+                                "    logging.error('Execution is about to time out, sending failure response to CloudFormation')",
+                                "    cfnresponse.send(event, context, cfnresponse.FAILED, {}, None)",
+                                "",
+                                "",
+                                "def handler(event, context):",
+                                "    # make sure we send a failure to CloudFormation if the function is going to timeout",
+                                "    timer = threading.Timer((context.get_remaining_time_in_millis() / 1000.00) - 0.5, timeout, args=[event, context])",
+                                "    timer.start()",
+                                "",
+                                "    print('Received event: %s' % json.dumps(event))",
+                                "    status = cfnresponse.SUCCESS",
+                                "    try:",
+                                "        source_bucket = event['ResourceProperties']['SourceBucket']",
+                                "        dest_bucket = event['ResourceProperties']['DestBucket']",
+                                "        prefix = event['ResourceProperties']['Prefix']",
+                                "        objects = event['ResourceProperties']['Objects']",
+                                "        if event['RequestType'] == 'Delete':",
+                                "            delete_objects(dest_bucket)",
+                                "        else:",
+                                "            copy_objects(source_bucket, dest_bucket, prefix, objects)",
+                                "    except Exception as e:",
+                                "        logging.error('Exception: %s' % e, exc_info=True)",
+                                "        status = cfnresponse.FAILED",
+                                "    finally:",
+                                "        timer.cancel()",
+                                "        cfnresponse.send(event, context, status, {}, None)",
+                                ""
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "S3CleanUpFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Description": "Empty the S3 Buckets while deleting the Stack",
+                "Handler": "index.handler",
+                "Runtime": "python2.7",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "S3CleanUpRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": 240,
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import json",
+                                "import logging",
+                                "import threading",
+                                "import boto3",
+                                "import cfnresponse",
+                                "client = boto3.client('s3')",
+                                "",
+                                "",
+                                "def delete_NonVersionedobjects(bucket):",
+                                "    print(\"Collecting data from\" + bucket)",
+                                "    paginator =     client.get_paginator('list_objects_v2')",
+                                "    result = paginator.paginate(Bucket=bucket)",
+                                "    objects = []",
+                                "    for page in result:",
+                                "        try:",
+                                "            for k in page['Contents']:",
+                                "                objects.append({'Key': k['Key']})",
+                                "                print(\"deleting objects\")",
+                                "                client.delete_objects(Bucket=bucket, Delete={'Objects': objects})",
+                                "                objects = []",
+                                "        except:",
+                                "            pass",
+                                "            print(\"bucket is already empty\")",
+                                "",
+                                "def delete_versionedobjects(bucket):",
+                                "    print(\"Collecting data from\" + bucket)",
+                                "    paginator = client.get_paginator('list_object_versions')",
+                                "    result = paginator.paginate(Bucket=bucket)",
+                                "    objects = []",
+                                "    for page in result:",
+                                "        try:",
+                                "            for k in page['Versions']:",
+                                "                objects.append({'Key':k['Key'],'VersionId': k['VersionId']})",
+                                "            try:",
+                                "                for k in page['DeleteMarkers']:",
+                                "                    version = k['VersionId']",
+                                "                    key = k['Key']",
+                                "                    objects.append({'Key': key,'VersionId': version})",
+                                "            except:",
+                                "                pass",
+                                "            print(\"deleting objects\")",
+                                "            client.delete_objects(Bucket=bucket, Delete={'Objects': objects})",
+                                "           # objects = []",
+                                "        except:",
+                                "            pass",
+                                "    print(\"bucket already empty\")",
+                                "",
+                                "",
+                                "",
+                                "def timeout(event, context):",
+                                "    logging.error('Execution is about to time out, sending failure response to CloudFormation')",
+                                "    cfnresponse.send(event, context, cfnresponse.FAILED, {}, None)",
+                                "",
+                                "",
+                                "def handler(event, context):",
+                                "    # make sure we send a failure to CloudFormation if the function is going to timeout",
+                                "    timer = threading.Timer((context.get_remaining_time_in_millis() / 1000.00) - 0.5, timeout, args=[event, context])",
+                                "    timer.start()",
+                                "",
+                                "    print('Received event: %s' % json.dumps(event))",
+                                "    status = cfnresponse.SUCCESS",
+                                "    try:",
+                                "        dest_bucket = event['ResourceProperties']['DestBucket']",
+                                "        if event['RequestType'] == 'Delete':",
+                                "            CheckifVersioned = client.get_bucket_versioning(Bucket=dest_bucket)",
+                                "            print CheckifVersioned",
+                                "            if 'Status' in CheckifVersioned:",
+                                "                print CheckifVersioned['Status']",
+                                "                print (\"This is a versioned Bucket\")",
+                                "                delete_versionedobjects(dest_bucket)",
+                                "            else:",
+                                "                print \"This is not a versioned bucket\"",
+                                "                delete_NonVersionedobjects(dest_bucket)",
+                                "        else:",
+                                "            print(\"Nothing to do\")",
+                                "    except Exception as e:",
+                                "        logging.error('Exception: %s' % e, exc_info=True)",
+                                "        status = cfnresponse.FAILED",
+                                "    finally:",
+                                "        timer.cancel()",
+                                "        cfnresponse.send(event, context, status, {}, None)",
+                                ""
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "S3CleanUpRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ],
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "lambda-copier",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:DeleteObject",
+                                        "s3:GetObject",
+                                        "s3:ListBucket",
+                                        "s3:ListBucketVersions",
+                                        "s3:DeleteObjectVersion",
+                                        "s3:GetObjectVersion",
+                                        "s3:GetBucketVersioning"
+                                    ],
+                                    "Resource": {
+                                        "Fn::If": [
+                                            "CreateBucketForBeanstalkSource",
+                                            [
+                                                {
+                                                    "Fn::Sub": "arn:aws:s3:::${CodePipelineArtifactStore}/*"
+                                                },
+                                                {
+                                                    "Fn::Sub": "arn:aws:s3:::${CodePipelineArtifactStore}"
+                                                },
+                                                {
+                                                    "Fn::Sub": "arn:aws:s3:::${BeanstalkSourceBucket}/*"
+                                                },
+                                                {
+                                                    "Fn::Sub": "arn:aws:s3:::${BeanstalkSourceBucket}"
+                                                }
+                                            ],
+                                            [
+                                                {
+                                                    "Fn::Sub": "arn:aws:s3:::${CodePipelineArtifactStore}/*"
+                                                },
+                                                {
+                                                    "Fn::Sub": "arn:aws:s3:::${CodePipelineArtifactStore}"
+                                                }
+                                            ]
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "CodePipelineArtifactStoreCleanUp": {
+            "Type": "AWS::CloudFormation::CustomResource",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "S3CleanUpFunction",
+                        "Arn"
+                    ]
+                },
+                "DestBucket": {
+                    "Ref": "CodePipelineArtifactStore"
+                }
+            }
+        },
+        "CodePipelineArtifactStore": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "Tags": []
+            }
+        },
+        "BeanstalkSourceBucket": {
+            "Condition": "CreateBucketForBeanstalkSource",
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                },
+                "Tags": []
+            }
+        },
+        "EmptyBeanstalkSourceBucketCleanup": {
+            "Condition": "CreateBucketForBeanstalkSource",
+            "Type": "AWS::CloudFormation::CustomResource",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "S3CleanUpFunction",
+                        "Arn"
+                    ]
+                },
+                "DestBucket": {
+                    "Ref": "BeanstalkSourceBucket"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "BeanstalkSourceBucket": {
+            "Condition": "CreateBucketForBeanstalkSource",
+            "Description": "S3 Bucket for the CodePipeline Source Stage for Beanstalk",
+            "Value": {
+                "Ref": "BeanstalkSourceBucket"
+            }
+        },
+        "CodePipelineArtifactStore": {
+            "Description": "S3 Bucket for the CodePipeline Artifcat",
+            "Value": {
+                "Ref": "CodePipelineArtifactStore"
+            }
+        },
+        "LambdaZipsBucket": {
+            "Description": "S3 Bucket for the Lambda Function Code",
+            "Value": {
+                "Ref": "LambdaZipsBucket"
+            }
+        }
+    }
+}
