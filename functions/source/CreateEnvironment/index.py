@@ -23,19 +23,7 @@ def handler(event, context):
         BlueEnvInfo=GetBlueEnvInfo(EnvName=(json.loads(user_parameters)['BlueEnvName']))
         BlueEnvId=(BlueEnvInfo['Environments'][0]['EnvironmentId'])
         BlueVersionLabel=(BlueEnvInfo['Environments'][0]['VersionLabel'])
-        #Create a CNAME Config file
-        BlueEnvCname=(BlueEnvInfo['Environments'][0]['CNAME'])
-        s3 = boto3.resource('s3')
-        bucket = s3.Bucket(json.loads(user_parameters)['BlueCNAMEConfigBucket'])
-        key = json.loads(user_parameters)['BlueCNAMEConfigFile']
-        objs = list(bucket.objects.filter(Prefix=key))
-        if len(objs) > 0 and objs[0].key == key:
-            print("BlueCNAMEConfigFile Already Exists!")
-        else:
-            obj = s3.Object(json.loads(user_parameters)['BlueCNAMEConfigBucket'], json.loads(user_parameters)['BlueCNAMEConfigFile'])
-            BlueEnvCnameFile = {'BlueEnvUrl': BlueEnvCname}
-            obj.put(Body=json.dumps(BlueEnvCnameFile))
-            print ("Created a new CNAME file")
+        
         #Calling CreateConfigTemplate API
         ConfigTemplate=CreateConfigTemplateBlue(AppName=(json.loads(user_parameters)['BeanstalkAppName']),BlueEnvId=BlueEnvId,TempName=json.loads(user_parameters)['CreateConfigTempName'])
         ReturnedTempName=ConfigTemplate
@@ -50,6 +38,19 @@ def handler(event, context):
           if GreenEnvId:
               Status="Success"
               Message="Successfully created the Green Environment/Environment with the provided name already exists"
+              #Create a CNAME Config file
+              BlueEnvCname=(BlueEnvInfo['Environments'][0]['CNAME'])
+              s3 = boto3.resource('s3')
+              bucket = s3.Bucket(json.loads(user_parameters)['BlueCNAMEConfigBucket'])
+              key = json.loads(user_parameters)['BlueCNAMEConfigFile']
+              objs = list(bucket.objects.filter(Prefix=key))
+              if len(objs) > 0 and objs[0].key == key:
+                  print("BlueCNAMEConfigFile Already Exists!")
+              else:
+                  obj = s3.Object(json.loads(user_parameters)['BlueCNAMEConfigBucket'], json.loads(user_parameters)['BlueCNAMEConfigFile'])
+                  BlueEnvCnameFile = {'BlueEnvUrl': BlueEnvCname}
+                  obj.put(Body=json.dumps(BlueEnvCnameFile))
+                  print ("Created a new CNAME file")
           else:
               Status="Failure"
               Message="Something went wrong on GreenEnv Creation"

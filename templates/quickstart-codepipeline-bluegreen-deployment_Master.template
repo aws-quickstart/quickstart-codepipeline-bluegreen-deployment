@@ -1,0 +1,683 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CICD Pipeline setup for a cost efficient Elastic Beanstalk Blue-Green deployment.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Git2s3 Setup parameters. Valid only when GitToS3integration parameter is set to true. Ignore if GitToS3integration is set to false"
+                    },
+                    "Parameters": [
+                        "GitToS3integration",
+                        "OutputBucketName",
+                        "OutputBucketKey",
+                        "CustomDomainName",
+                        "ApiSecret",
+                        "AllowedIps",
+                        "GitToken",
+                        "OauthKey",
+                        "OauthSecret"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "AWS Quick Start Configuration"
+                    },
+                    "Parameters": [
+                        "QSS3BucketName",
+                        "QSS3KeyPrefix"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "AWS Elastic Beanstalk Configuration"
+                    },
+                    "Parameters": [
+                        "BeanstalkSourceStageS3BucketName",
+                        "BeanstalkSourceStageS3BucketKey",
+                        "ExistingBlueEnvironmentName",
+                        "ExistingBeanstalkApplicationName",
+                        "NewBlueEnvironmentName",
+                        "GreenEnvironmentName",
+                        "NewBeanstalkApplicationName",
+                        "SolutionStackForNewBeanstalkEnv",
+                        "AppPackageS3Bucket",
+                        "AppPackageS3key"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "AWS CodePipeline Parameters"
+                    },
+                    "Parameters": [
+                        "AdministratorEmail",
+                        "NameofthePipeline",
+                        "OutputBucketKey"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "AllowedIps": {
+                    "default": "Allowed IPs"
+                },
+                "ApiSecret": {
+                    "default": "API Secret"
+                },
+                "CustomDomainName": {
+                    "default": "Custom Domain Name"
+                },
+                "GitToken": {
+                    "default": "Git Personal Access Token"
+                },
+                "OauthKey": {
+                    "default": "OAuth2 Key"
+                },
+                "OauthSecret": {
+                    "default": "OAuth2 Secret"
+                },
+                "OutputBucketName": {
+                    "default": "Output S3 Bucket Name"
+                },
+                "OutputBucketKey": {
+                    "default": "Output S3 Bucket key"
+                },
+                "QSS3BucketName": {
+                    "default": "Quick Start S3 Bucket Name"
+                },
+                "QSS3KeyPrefix": {
+                    "default": "Quick Start S3 Key Prefix"
+                },
+                "BeanstalkSourceStageS3BucketName": {
+                    "default": "Beanstalk Source Stage Bucket"
+                },
+                "BeanstalkSourceStageS3BucketKey": {
+                    "default": "Beanstalk Source Stage Bucket key"
+                },
+                "ExistingBlueEnvironmentName": {
+                    "default": "Existing Blue Environmemt Name"
+                },
+                "ExistingBeanstalkApplicationName": {
+                    "default": "Existing Beanstalk Application Name"
+                },
+                "NewBlueEnvironmentName": {
+                    "default": "New Blue Environment Name"
+                },
+                "GreenEnvironmentName": {
+                    "default": "Green Environment Name"
+                },
+                "NewBeanstalkApplicationName": {
+                    "default": "New Beanstalk Application"
+                },
+                "SolutionStackForNewBeanstalkEnv": {
+                    "default": "Solution Stack for Beanstalk Environment"
+                },
+                "AppPackageS3Bucket": {
+                    "default": "Sample Environment App Bucket"
+                },
+                "AppPackageS3key": {
+                    "default": "Sample Environment App Bucket key"
+                },
+                "AdministratorEmail": {
+                    "default": "Email Address"
+                },
+                "NameofthePipeline": {
+                    "default": "Name for the Pipeline"
+                }
+            }
+        }
+    },
+    "Conditions": {
+        "CreateNewBeanstalkEnv": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExistingBlueEnvironmentName"
+                },
+                ""
+            ]
+        },
+        "CreateNewBeanstalkApp": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExistingBeanstalkApplicationName"
+                },
+                ""
+            ]
+        },
+        "CreateBeanstalkStack": {
+            "Fn::Or": [
+                {
+                    "Condition": "CreateNewBeanstalkEnv"
+                },
+                {
+                    "Condition": "CreateNewBeanstalkApp"
+                }
+            ]
+        },
+        "CreateBucketForBeanstalkSource": {
+            "Fn::And": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "BeanstalkSourceStageS3BucketName"
+                        },
+                        ""
+                    ]
+                },
+                {
+                    "Fn::Not": [
+                        {
+                            "Fn::Equals": [
+                                {
+                                    "Ref": "GitToS3integration"
+                                },
+                                "true"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "CreateGittoS3Integration": {
+            "Fn::Equals": [
+                {
+                    "Ref": "GitToS3integration"
+                },
+                "true"
+            ]
+        },
+        "GovCloudCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "AWS::Region"
+                },
+                "us-gov-west-1"
+            ]
+        }
+    },
+    "Parameters": {
+        "AdministratorEmail": {
+            "Type": "String",
+            "Description": "Provide an administrator email for Pipeline Manual Approval. SNS subscription Email will be sent to this address for the Manual Approval Stage. This is mandatory for the Manual approval Stage of the CodePipeline",
+            "AllowedPattern": "^[a-z0-9]+(\\.[_a-z0-9]+)*@[a-z0-9-]+(\\.[a-z0-9-]+)*(\\.[a-z]{2,15})$",
+            "ConstraintDescription": "Can contain only ASCII characters. This must be in the format of username@email.com"
+        },
+        "NameofthePipeline": {
+            "Type": "String",
+            "Default": "BlueGreenCICDPipeline",
+            "Description": "Name of the CICDPipeline used for Blue-Green Deployment",
+            "AllowedPattern": "[A-Za-z0-9.@\\-_]+",
+            "ConstraintDescription": "Can contain Only letters, numbers and certain special characters such as  . (period), @ (at sign), - (minus sign), and _ (underscore)",
+            "MinLength": "1",
+            "MaxLength": "100"
+        },
+        "BeanstalkSourceStageS3BucketName": {
+            "Type": "String",
+            "Default": "",
+            "Description": "OPTIONAL: S3 bucket name where the application package can be uploaded/is uploaded for the CodePipeline Source Stage. If not provided, a bucket will be created. This can be ignored if Git2S3GitToS3integration parameter is set to 'true'"
+        },
+        "BeanstalkSourceStageS3BucketKey": {
+            "Type": "String",
+            "Default": "application-code.zip",
+            "Description": "The zip file name in .zip format that will be uploaded to the SourceStageS3BucketName bucket required by Beanstalk for the CodePipeline Source Stage. This is by default application-code.zip. Please ignore this if Git2S3GitToS3integration parameter is set to 'true'"
+        },
+        "ExistingBlueEnvironmentName": {
+            "Type": "String",
+            "Default": "",
+            "Description": "OPTIONAL: Name of the Existing Beanstalk Environment as Blue Environment. Leave it blank if you want to create a new Environment. Provide a value to this parameter for which you would like to utilize the cost efficient Blue-Green deployments by creating a temporary cloned environment for routing the live traffic when this environment is in the Deployment/Test lifecycle"
+        },
+        "ExistingBeanstalkApplicationName": {
+            "Type": "String",
+            "Default": "",
+            "Description": "OPTIONAL: Required if the parameter 'ExistingBlueEnvironmentName' is provided. Give the Name of the Existing Beantalk Application where the existing Beanstalk Environment is running. Leave in blank if you want to create a new Application"
+        },
+        "NewBlueEnvironmentName": {
+            "Type": "String",
+            "Default": "BlueEnvironment",
+            "Description": "Provide a name for creating a new Beanstalk Environment as Blue Environment that uses a Sample Application. This is the main environment from which a temporary clone called 'Green Environment' will be created to route the live traffic until the deployment is completed and tested with this one"
+        },
+        "GreenEnvironmentName": {
+            "Type": "String",
+            "Default": "GreenEnvironment",
+            "Description": "Mandatory:Provide a Name for the Green Environment, which will be the clone of the Blue Environment where the traffic will be routed temporarily for the amount of time the Blue Environment is completed with the deployment and tested. After the successful deployment to Blue Environment, the trasffic will be routed back to Blue and the Green Environment will be terminated"
+        },
+        "NewBeanstalkApplicationName": {
+            "Type": "String",
+            "Default": "BlueGreenBeanstalkApplication",
+            "Description": "Provide a name for a new Beantalk Application where the new Blue Environment and the clone will be created. If not provided, the name will be 'BlueGreenBeanstalkApplication' by default"
+        },
+        "SolutionStackForNewBeanstalkEnv": {
+            "Type": "String",
+            "Default": "64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1",
+            "Description": "Provide a name for the Beanstalk Solution for launching the new Blue Environment. If not provided, the default will be a PHP solution stack. Please refer the following document https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/concepts.platforms.html for all the solution stack values."
+        },
+        "AppPackageS3Bucket": {
+            "Type": "String",
+            "Default": "elasticbeanstalk-samples",
+            "Description": "Provide the S3 bucket where the Application Package exists for creating a new Beanstalk environment. This parameter can be ignored if using an existing Environment."
+        },
+        "AppPackageS3key": {
+            "Type": "String",
+            "Default": "php-sample.zip",
+            "Description": "Provide the S3 bucket key with the zip file package name for creating a new Beanstalk environment. This parameter can be ignored if using an existing Environment"
+        },
+        "GitToS3integration": {
+            "Type": "String",
+            "Default": "false",
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Description": "Select 'true' if you want to have Git to S3 integration setup. If not leave it as default 'false'. This will allow you to use an existing Git repository to use with the Application deployment to Elastic Beanstalk"
+        },
+        "AllowedIps": {
+            "Description": "OPTIONAL: gitpull method only. Comma seperated list of IP CIDR blocks for source IP authentication. The BitBucket Cloud IP ranges are provided as defaults. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Type": "String",
+            "Default": "131.103.20.160/27,165.254.145.0/26,104.192.143.0/24"
+        },
+        "ApiSecret": {
+            "Description": "OPTIONAL: gitpull method only. WebHook Secrets for use with GitHub Enterprise and GitLab. If a secret is matched IP range authentication is bypassed. Cannot contain: , \\ \"Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Type": "String",
+            "Default": "",
+            "NoEcho": "true"
+        },
+        "CustomDomainName": {
+            "Description": "OPTIONAL:Use a custom domain name for the webhook endpoint, if left blank API Gateway will create a domain name for you. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Type": "String",
+            "Default": ""
+        },
+        "GitToken": {
+            "NoEcho": "true",
+            "Description": "OPTIONAL:zipdl method only. Personal access token, needed for GitHub Enterprise and GitLab. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Type": "String",
+            "Default": "",
+            "ConstraintDescription": "this token must be generated from the git server/provider"
+        },
+        "OauthKey": {
+            "Description": "OPTIONAL: zipdl method only. OAuth2 Key needed for BitBucket. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Type": "String",
+            "Default": "",
+            "ConstraintDescription": "this key must be generated from the git server/provider"
+        },
+        "OauthSecret": {
+            "NoEcho": "true",
+            "Description": "OPTIONAL:zipdl method only. OAuth2 Secret needed for BitBucket.Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Type": "String",
+            "Default": "",
+            "ConstraintDescription": "this secret must be generated from the git server/provider"
+        },
+        "OutputBucketName": {
+            "Description": "OPTIONAL: Bucket Name where the zip file output should be placed, if left blank a bucket name will be automatically generated.Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Type": "String",
+            "Default": ""
+        },
+        "OutputBucketKey": {
+            "Description": "OPTIONAL: Bucket Name where the zip file output should be placed, which can be fed as an input to the Pipeline Source Stage. This is mandatory if GitToS3Integration property is set to true.",
+            "Type": "String",
+            "Default": "/"
+        },
+        "QSS3BucketName": {
+            "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
+            "ConstraintDescription": "Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Default": "quickstart-reference",
+            "Description": "S3 bucket name for the Quick Start assets. Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Type": "String"
+        },
+        "QSS3KeyPrefix": {
+            "AllowedPattern": "^[0-9a-zA-Z-/]*$",
+            "ConstraintDescription": "Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "codepipeline-bluegreen-deployment/latest/",
+            "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "GittoS3IntegrationStack": {
+            "Condition": "CreateGittoS3Integration",
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": {
+                    "Fn::Sub": [
+                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-git2s3/templates/git2s3.template",
+                        {
+                            "QSS3Region": {
+                                "Fn::If": [
+                                    "GovCloudCondition",
+                                    "s3-us-gov-west-1",
+                                    "s3"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Parameters": {
+                    "AllowedIps": {
+                        "Ref": "AllowedIps"
+                    },
+                    "ApiSecret": {
+                        "Ref": "ApiSecret"
+                    },
+                    "CustomDomainName": {
+                        "Ref": "CustomDomainName"
+                    },
+                    "GitToken": {
+                        "Ref": "GitToken"
+                    },
+                    "OauthKey": {
+                        "Ref": "OauthKey"
+                    },
+                    "OauthSecret": {
+                        "Ref": "OauthSecret"
+                    },
+                    "OutputBucketName": {
+                        "Ref": "OutputBucketName"
+                    }
+                }
+            }
+        },
+        "BeanstalkSampleApplicationStack": {
+            "Condition": "CreateBeanstalkStack",
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": {
+                    "Fn::Sub": [
+                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/ElasticBeanstalkSample.template",
+                        {
+                            "QSS3Region": {
+                                "Fn::If": [
+                                    "GovCloudCondition",
+                                    "s3-us-gov-west-1",
+                                    "s3"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Parameters": {
+                    "ExistingBlueEnvironmentName": {
+                        "Ref": "ExistingBlueEnvironmentName"
+                    },
+                    "ExistingBeanstalkApplicationName": {
+                        "Ref": "ExistingBeanstalkApplicationName"
+                    },
+                    "NewBlueEnvironmentName": {
+                        "Ref": "NewBlueEnvironmentName"
+                    },
+                    "GreenEnvironmentName": {
+                        "Ref": "GreenEnvironmentName"
+                    },
+                    "NewBeanstalkApplicationName": {
+                        "Ref": "NewBeanstalkApplicationName"
+                    },
+                    "SolutionStackForNewBeanstalkEnv": {
+                        "Ref": "SolutionStackForNewBeanstalkEnv"
+                    },
+                    "AppPackageS3Bucket": {
+                        "Ref": "AppPackageS3Bucket"
+                    },
+                    "AppPackageS3key": {
+                        "Ref": "AppPackageS3key"
+                    }
+                }
+            }
+        },
+        "CopyFunctiontoS3BucketStack": {
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": {
+                    "Fn::Sub": [
+                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/CopyFunctiontoS3Bucket.template",
+                        {
+                            "QSS3Region": {
+                                "Fn::If": [
+                                    "GovCloudCondition",
+                                    "s3-us-gov-west-1",
+                                    "s3"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Parameters": {
+                    "QSS3BucketName": {
+                        "Ref": "QSS3BucketName"
+                    },
+                    "QSS3KeyPrefix": {
+                        "Ref": "QSS3KeyPrefix"
+                    },
+                    "GitToS3integration": {
+                        "Ref": "GitToS3integration"
+                    },
+                    "BeanstalkSourceStageS3BucketName": {
+                        "Ref": "BeanstalkSourceStageS3BucketName"
+                    }
+                }
+            }
+        },
+        "CodePipelineStack": {
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": {
+                    "Fn::Sub": [
+                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/CodePipelineStack.template",
+                        {
+                            "QSS3Region": {
+                                "Fn::If": [
+                                    "GovCloudCondition",
+                                    "s3-us-gov-west-1",
+                                    "s3"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Parameters": {
+                    "AdministratorEmail": {
+                        "Ref": "AdministratorEmail"
+                    },
+                    "NameofthePipeline": {
+                        "Ref": "NameofthePipeline"
+                    },
+                    "QSS3KeyPrefix": {
+                        "Ref": "QSS3KeyPrefix"
+                    },
+                    "LambdaZipsBucket": {
+                        "Fn::GetAtt": [
+                            "CopyFunctiontoS3BucketStack",
+                            "Outputs.LambdaZipsBucket"
+                        ]
+                    },
+                    "BlueEnvironmentName": {
+                        "Fn::If": [
+                            "CreateNewBeanstalkEnv",
+                            {
+                                "Fn::GetAtt": [
+                                    "BeanstalkSampleApplicationStack",
+                                    "Outputs.BeanstalkEnvironment"
+                                ]
+                            },
+                            {
+                                "Ref": "ExistingBlueEnvironmentName"
+                            }
+                        ]
+                    },
+                    "GreenEnvironmentName": {
+                        "Ref": "GreenEnvironmentName"
+                    },
+                    "BeanstalkApplicationName": {
+                        "Fn::If": [
+                            "CreateNewBeanstalkApp",
+                            {
+                                "Ref": "NewBeanstalkApplicationName"
+                            },
+                            {
+                                "Ref": "ExistingBeanstalkApplicationName"
+                            }
+                        ]
+                    },
+                    "BeanstalkSourceStageBucketKey": {
+                        "Fn::If": [
+                            "CreateGittoS3Integration",
+                            {
+                                "Ref": "OutputBucketKey"
+                            },
+                            {
+                                "Ref": "BeanstalkSourceStageS3BucketKey"
+                            }
+                        ]
+                    },
+                    "BeanstalkSourceStageBucket": {
+                        "Fn::If": [
+                            "CreateGittoS3Integration",
+                            {
+                                "Fn::GetAtt": [
+                                    "GittoS3IntegrationStack",
+                                    "Outputs.OutputBucketName"
+                                ]
+                            },
+                            {
+                                "Fn::If": [
+                                    "CreateBucketForBeanstalkSource",
+                                    {
+                                        "Fn::GetAtt": [
+                                            "CopyFunctiontoS3BucketStack",
+                                            "Outputs.BeanstalkSourceBucket"
+                                        ]
+                                    },
+                                    {
+                                        "Ref": "BeanstalkSourceStageS3BucketName"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "CodePipelineArtifactStore": {
+                        "Fn::GetAtt": [
+                            "CopyFunctiontoS3BucketStack",
+                            "Outputs.CodePipelineArtifactStore"
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "NewBeanstalkEnvEndPointUrl": {
+            "Condition": "CreateNewBeanstalkEnv",
+            "Description": "New Beanstalk Environment Endpoint URL",
+            "Value": {
+                "Fn::GetAtt": [
+                    "BeanstalkSampleApplicationStack",
+                    "Outputs.BeanstalkEnvEndPointUrl"
+                ]
+            }
+        },
+        "CustomDomainNameCNAME": {
+            "Condition": "CreateGittoS3Integration",
+            "Description": "One of the Git2S3Integration Output",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GittoS3IntegrationStack",
+                    "Outputs.CustomDomainNameCNAME"
+                ]
+            }
+        },
+        "PublicSSHKey": {
+            "Condition": "CreateGittoS3Integration",
+            "Description": "One of the Git2S3Integration Output",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GittoS3IntegrationStack",
+                    "Outputs.PublicSSHKey"
+                ]
+            }
+        },
+        "GitPullWebHookApi": {
+            "Condition": "CreateGittoS3Integration",
+            "Description": "One of the Git2S3Integration Output",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GittoS3IntegrationStack",
+                    "Outputs.GitPullWebHookApi"
+                ]
+            }
+        },
+        "ZipDownloadWebHookApi": {
+            "Condition": "CreateGittoS3Integration",
+            "Description": "One of the Git2S3Integration Output",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GittoS3IntegrationStack",
+                    "Outputs.ZipDownloadWebHookApi"
+                ]
+            }
+        },
+        "GittoS3IntegrationOutputBucketName": {
+            "Condition": "CreateGittoS3Integration",
+            "Description": "One of the Git2S3Integration Output",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GittoS3IntegrationStack",
+                    "Outputs.OutputBucketName"
+                ]
+            }
+        },
+        "CodePipelineName": {
+            "Description": "Name of the Pipeline",
+            "Value": {
+                "Ref": "NameofthePipeline"
+            }
+        },
+        "BlueEnvironmentName": {
+            "Description": "Name of the Blue Environment",
+            "Value": {
+                "Fn::If": [
+                    "CreateNewBeanstalkEnv",
+                    {
+                        "Fn::GetAtt": [
+                            "BeanstalkSampleApplicationStack",
+                            "Outputs.BeanstalkEnvironment"
+                        ]
+                    },
+                    {
+                        "Ref": "ExistingBlueEnvironmentName"
+                    }
+                ]
+            }
+        },
+        "GreenEnvironmentName": {
+            "Description": "Name of the Green Environment",
+            "Value": {
+                "Ref": "GreenEnvironmentName"
+            }
+        },
+        "BeanstalkSourceBucketName": {
+            "Description": "Name of the bucket where the application code should be uploaded for the Elastic Beanstalk application in the CodePipeline Source Stage",
+            "Value": {
+                "Fn::If": [
+                    "CreateGittoS3Integration",
+                    {
+                        "Fn::GetAtt": [
+                            "GittoS3IntegrationStack",
+                            "Outputs.OutputBucketName"
+                        ]
+                    },
+                    {
+                        "Fn::If": [
+                            "CreateBucketForBeanstalkSource",
+                            {
+                                "Fn::GetAtt": [
+                                    "CopyFunctiontoS3BucketStack",
+                                    "Outputs.BeanstalkSourceBucket"
+                                ]
+                            },
+                            {
+                                "Ref": "BeanstalkSourceStageS3BucketName"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+}
