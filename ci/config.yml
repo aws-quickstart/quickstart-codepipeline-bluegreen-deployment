@@ -1,27 +1,35 @@
+---
 global:
-  marketplace-ami: false
   owner: quickstart-eng@amazon.com
   qsname: quickstart-codepipeline-bluegreen-deployment
   regions:
-    - ap-northeast-1
-    - ap-northeast-2
-    - ap-south-1
-    - ap-southeast-1
-    - ap-southeast-2
-    - ca-central-1
-    - eu-central-1
-    - eu-west-1
-    - sa-east-1
-    - us-east-1
     - us-east-2
+    - us-east-1
     - us-west-1
     - us-west-2
+    #- ap-south-1
+    #- eu-west-3
+    - eu-west-2
+    - eu-west-1
+    #- ap-northeast-3
+    - ap-northeast-2
+    - ap-northeast-1
+    #- sa-east-1
+    - ca-central-1
+    - ap-southeast-1
+    - ap-southeast-2
+    - eu-central-1
   reporting: true
- 
 tests:
-  quickstart-codepipeline-bluegreen-deploymentt1:
-    parameter_input: quickstart-codepipeline-bluegreen-deployment-example-params1.json
-    template_file: quickstart-codepipeline-bluegreen-deployment-example1.template
-  quickstart-codepipeline-bluegreen-deploymentt2:
-    parameter_input: quickstart-codepipeline-bluegreen-deployment-example-params2.json
-    template_file: quickstart-codepipeline-bluegreen-deployment-example2.template
+  test-withoutGittoS3withBeanstalkSample: #test without GittoS3 Integration enabled with sample Beanstalk app
+    parameter_input: withoutGittoS3withBeanstalkSample.json
+    template_file: quickstart-codepipeline-bluegreen-deployment-master.template
+  test-withGittoS3withBeanstalkSample: #test with GittoS3 Integration enabled with sample Beanstalk app
+    parameter_input: withGittoS3withBeanstalkSample.json
+    template_file: quickstart-codepipeline-bluegreen-deployment-master.template
+  test-withoutGittoS3withnoBeanstalkSample: #test without GittoS3 Integration enabled with no sample Beanstalk app
+    parameter_input: withoutGittoS3withnoBeanstalkSample.json
+    template_file: quickstart-codepipeline-bluegreen-deployment-master.template
+  test-withGittoS3withnoBeanstalkSample: #test with GittoS3 Integration enabled with no sample Beanstalk app
+    parameter_input: withGittoS3withnoBeanstalkSample.json
+    template_file: quickstart-codepipeline-bluegreen-deployment-master.template
