@@ -41,22 +41,22 @@
         "NewBlueEnvironmentName": {
             "Type": "String",
             "Default": "BlueEnvironment",
-            "Description": "Provide a name for creating a new Beanstalk Environment as Blue Environment that uses a Sample Application. This is the main environment from which a temporary clone called 'Green Environment' will be created to route the live traffic until the deployment is completed and tested with this one"
+            "Description": "Provide a name for creating a new Beanstalk Environment as Blue Environment that uses a Sample Application. This is the main environment from which a temporary clone called 'Green Environment' will be created to route the live traffic until the deployment is completed and tested with this one. Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' property empty"
         },
         "GreenEnvironmentName": {
             "Type": "String",
             "Default": "GreenEnvironment",
-            "Description": "Mandatory:Provide a Name for the Green Environment, which will be the clone of the Blue Environment where the traffic will be routed temporarily for the amount of time the Blue Environment is completed with the deployment and tested. After the successful deployment to Blue Environment, the trasffic will be routed back to Blue and the Green Environment will be terminate"
+            "Description": "Provide a Name for the Green Environment, which will be the clone of the Blue Environment where the traffic will be routed temporarily for the amount of time the Blue Environment is completed with the deployment and tested. After the successful deployment to Blue Environment, the traffic will be routed back to Blue and the Green Environment will be terminated"
         },
         "NewBeanstalkApplicationName": {
             "Type": "String",
             "Default": "BlueGreenBeanstalkApplication",
-            "Description": "OPTIONAL:Provide a name for a new Beantalk Application where the new Blue Environment and the clone will be created. If not provided, the name will be 'BlueGreenBeanstalkApplication' by default"
+            "Description": "OPTIONAL:Provide a name for a new Beantalk Application where the new Blue Environment and the clone will be created. If not provided, the name will be 'BlueGreenBeanstalkApplication' by default. Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' and 'ExistingBeanstalkApplicationName' property empty"
         },
         "SolutionStackForNewBeanstalkEnv": {
             "Type": "String",
             "Default": "64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1",
-            "Description": "Provide a name for the Beanstalk Solution stack for launching the new Blue Environment. If not provided, the default will be a PHP solution stack. Please refer the following document https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/concepts.platforms.html for all the solution stack values."
+            "Description": "Provide a name for the Beanstalk Solution stack for launching the new Blue Environment. If not provided, the default will be a PHP solution stack. Please refer the following document https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/concepts.platforms.html for all the solution stack values. Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' property empty"
         },
         "AppPackageS3Bucket": {
             "Type": "String",

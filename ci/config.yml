@@ -1,6 +1,6 @@
 ---
 global:
-  owner: kirankuc@amazon.com
+  owner: quickstart-eng@amazon.com
   qsname: quickstart-codepipeline-bluegreen-deployment
   regions:
     - us-east-2
@@ -21,9 +21,15 @@ global:
     - eu-central-1
   reporting: true
 tests:
-  test-withoutGittoS3: #test without GittoS3 Integration enabled
-    parameter_input: input.json
-    template_file: quickstart-codepipeline-bluegreen-deployment_Master.template
-  test-withGittoS3: #test with GittoS3 Integration enabled
-    parameter_input: input1.json
-    template_file: quickstart-codepipeline-bluegreen-deployment_Master.template
+  test-withoutGittoS3withBeanstalkSample: #test without GittoS3 Integration enabled with sample Beanstalk app
+    parameter_input: withoutGittoS3withBeanstalkSample.json
+    template_file: quickstart-codepipeline-bluegreen-deployment-master.template
+  test-withGittoS3withBeanstalkSample: #test with GittoS3 Integration enabled with sample Beanstalk app
+    parameter_input: withGittoS3withBeanstalkSample.json
+    template_file: quickstart-codepipeline-bluegreen-deployment-master.template
+  test-withoutGittoS3withnoBeanstalkSample: #test without GittoS3 Integration enabled with no sample Beanstalk app
+    parameter_input: withoutGittoS3withnoBeanstalkSample.json
+    template_file: quickstart-codepipeline-bluegreen-deployment-master.template
+  test-withGittoS3withnoBeanstalkSample: #test with GittoS3 Integration enabled with no sample Beanstalk app
+    parameter_input: withGittoS3withnoBeanstalkSample.json
+    template_file: quickstart-codepipeline-bluegreen-deployment-master.template

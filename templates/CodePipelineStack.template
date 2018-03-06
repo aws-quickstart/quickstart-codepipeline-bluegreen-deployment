@@ -227,7 +227,7 @@
                                 },
                                 "Configuration": {
                                     "ProjectName": {
-                                        "Ref": "MyCodeBuildswapserver"
+                                        "Ref": "CodeBuildSwapServer"
                                     }
                                 },
                                 "RunOrder": 1
@@ -280,7 +280,7 @@
                                 },
                                 "Configuration": {
                                     "ProjectName": {
-                                        "Ref": "MyCodeBuildtestserver"
+                                        "Ref": "CodeBuildTestServer"
                                     }
                                 },
                                 "RunOrder": 1
@@ -589,7 +589,7 @@
                 ]
             }
         },
-        "MyCodeBuildswapserver": {
+        "CodeBuildSwapServer": {
             "Type": "AWS::CodeBuild::Project",
             "Properties": {
                 "Name": "CICDurlSwap",
@@ -638,7 +638,7 @@
                 "TimeoutInMinutes": 60
             }
         },
-        "MyCodeBuildtestserver": {
+        "CodeBuildTestServer": {
             "Type": "AWS::CodeBuild::Project",
             "Properties": {
                 "Name": "CICDBlueDeploymentTest",

@@ -1,0 +1,61 @@
+[{
+    "ParameterKey": "AdministratorEmail",
+    "ParameterValue": "test@email.com"
+}, {
+    "ParameterKey": "AllowedIps",
+    "ParameterValue": "131.103.20.160/27,165.254.145.0/26,104.192.143.0/24"
+}, {
+    "ParameterKey": "ApiSecret",
+    "ParameterValue": "test123"
+}, {
+    "ParameterKey": "AppPackageS3Bucket",
+    "ParameterValue": "elasticbeanstalk-samples"
+}, {
+    "ParameterKey": "AppPackageS3key",
+    "ParameterValue": "php-sample.zip"
+}, {
+    "ParameterKey": "BeanstalkSourceStageS3BucketName",
+    "ParameterValue": ""
+}, {
+    "ParameterKey": "BeanstalkSourceStageS3BucketKey",
+    "ParameterValue": "php-sample.zip"
+},{
+    "ParameterKey": "CustomDomainName",
+    "ParameterValue": ""
+},{
+    "ParameterKey": "ExistingBeanstalkApplicationName",
+    "ParameterValue": "BlueGreenBeanstalkApplication"
+},{
+    "ParameterKey": "ExistingBlueEnvironmentName",
+    "ParameterValue": "BlueEnvironment"
+},{
+    "ParameterKey": "GitToken",
+    "ParameterValue": ""
+},{
+    "ParameterKey": "GitToS3integration",
+    "ParameterValue": "false"
+},{
+    "ParameterKey": "GreenEnvironmentName",
+    "ParameterValue": "GreenEnvironment"
+},{
+    "ParameterKey": "NameofthePipeline",
+    "ParameterValue": "BlueGreenCICDPipeline"
+},{
+    "ParameterKey": "NewBeanstalkApplicationName",
+    "ParameterValue": ""
+},{
+    "ParameterKey": "NewBlueEnvironmentName",
+    "ParameterValue": ""
+},{
+    "ParameterKey": "OauthKey",
+    "ParameterValue": ""
+},{
+    "ParameterKey": "OauthSecret",
+    "ParameterValue": ""
+},{
+    "ParameterKey": "OutputBucketName",
+    "ParameterValue": ""
+},{
+    "ParameterKey": "SolutionStackForNewBeanstalkEnv",
+    "ParameterValue": "64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1"
+}]

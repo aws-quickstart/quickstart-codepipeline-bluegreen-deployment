@@ -1,6 +1,6 @@
 [{
     "ParameterKey": "AdministratorEmail",
-    "ParameterValue": "kirankuc@amazon.com"
+    "ParameterValue": "test@email.com"
 }, {
     "ParameterKey": "AllowedIps",
     "ParameterValue": "131.103.20.160/27,165.254.145.0/26,104.192.143.0/24"
@@ -33,7 +33,7 @@
     "ParameterValue": ""
 },{
     "ParameterKey": "GitToS3integration",
-    "ParameterValue": "true"
+    "ParameterValue": "false"
 },{
     "ParameterKey": "GreenEnvironmentName",
     "ParameterValue": "GreenEnvironment"
@@ -52,9 +52,6 @@
 },{
     "ParameterKey": "OauthSecret",
     "ParameterValue": ""
-},{
-    "ParameterKey": "OutputBucketKey",
-    "ParameterValue": "ckirankumar1989/BeanstalkPHPSample/master/BeanstalkPHPSample.zip"
 },{
     "ParameterKey": "OutputBucketName",
     "ParameterValue": ""

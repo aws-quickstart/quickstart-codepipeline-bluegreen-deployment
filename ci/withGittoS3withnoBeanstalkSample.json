@@ -1,6 +1,6 @@
 [{
     "ParameterKey": "AdministratorEmail",
-    "ParameterValue": "kirankuc@amazon.com"
+    "ParameterValue": "test@email.com"
 }, {
     "ParameterKey": "AllowedIps",
     "ParameterValue": "131.103.20.160/27,165.254.145.0/26,104.192.143.0/24"
@@ -24,16 +24,16 @@
     "ParameterValue": ""
 },{
     "ParameterKey": "ExistingBeanstalkApplicationName",
-    "ParameterValue": ""
+    "ParameterValue": "BlueGreenBeanstalkApplication"
 },{
     "ParameterKey": "ExistingBlueEnvironmentName",
-    "ParameterValue": ""
+    "ParameterValue": "BlueEnvironment"
 },{
     "ParameterKey": "GitToken",
     "ParameterValue": ""
 },{
     "ParameterKey": "GitToS3integration",
-    "ParameterValue": "false"
+    "ParameterValue": "true"
 },{
     "ParameterKey": "GreenEnvironmentName",
     "ParameterValue": "GreenEnvironment"
@@ -42,16 +42,19 @@
     "ParameterValue": "BlueGreenCICDPipeline"
 },{
     "ParameterKey": "NewBeanstalkApplicationName",
-    "ParameterValue": "BlueGreenBeanstalkApplication"
+    "ParameterValue": ""
 },{
     "ParameterKey": "NewBlueEnvironmentName",
-    "ParameterValue": "BlueEnvironment"
+    "ParameterValue": ""
 },{
     "ParameterKey": "OauthKey",
     "ParameterValue": ""
 },{
     "ParameterKey": "OauthSecret",
     "ParameterValue": ""
+},{
+    "ParameterKey": "OutputBucketKey",
+    "ParameterValue": "ckirankumar1989/BeanstalkPHPSample/master/BeanstalkPHPSample.zip"
 },{
     "ParameterKey": "OutputBucketName",
     "ParameterValue": ""
