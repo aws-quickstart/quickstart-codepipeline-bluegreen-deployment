@@ -1,3 +1,4 @@
 [submodule "submodules/quickstart-git2s3"]
 	path = submodules/quickstart-git2s3
-	url = https://github.com/aws-quickstart/quickstart-git2s3.git
+	url = git@github.com:aws-quickstart/quickstart-git2s3.git
+	branch = master
