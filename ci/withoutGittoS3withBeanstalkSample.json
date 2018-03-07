@@ -8,12 +8,6 @@
     "ParameterKey": "ApiSecret",
     "ParameterValue": "test123"
 }, {
-    "ParameterKey": "AppPackageS3Bucket",
-    "ParameterValue": "elasticbeanstalk-samples"
-}, {
-    "ParameterKey": "AppPackageS3key",
-    "ParameterValue": "php-sample.zip"
-}, {
     "ParameterKey": "BeanstalkSourceStageS3BucketName",
     "ParameterValue": ""
 }, {
@@ -21,12 +15,6 @@
     "ParameterValue": "php-sample.zip"
 },{
     "ParameterKey": "CustomDomainName",
-    "ParameterValue": ""
-},{
-    "ParameterKey": "ExistingBeanstalkApplicationName",
-    "ParameterValue": ""
-},{
-    "ParameterKey": "ExistingBlueEnvironmentName",
     "ParameterValue": ""
 },{
     "ParameterKey": "GitToken",
@@ -55,7 +43,4 @@
 },{
     "ParameterKey": "OutputBucketName",
     "ParameterValue": ""
-},{
-    "ParameterKey": "SolutionStackForNewBeanstalkEnv",
-    "ParameterValue": "64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1"
 }]

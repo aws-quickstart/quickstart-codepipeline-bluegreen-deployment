@@ -417,7 +417,7 @@
                                                     "Fn::Sub": "arn:aws:s3:::${CodePipelineArtifactStore}/*"
                                                 },
                                                 {
-                                                    "Fn::Sub": "arn:aws:s3:::${CodePipelineArtifactStore}"
+                                                    "Fn::Sub": "arn:aws:s3:::*"
                                                 }
                                             ]
                                         ]

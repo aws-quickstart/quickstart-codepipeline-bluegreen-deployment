@@ -8,12 +8,6 @@
     "ParameterKey": "ApiSecret",
     "ParameterValue": "test123"
 }, {
-    "ParameterKey": "AppPackageS3Bucket",
-    "ParameterValue": "elasticbeanstalk-samples"
-}, {
-    "ParameterKey": "AppPackageS3key",
-    "ParameterValue": "php-sample.zip"
-}, {
     "ParameterKey": "BeanstalkSourceStageS3BucketName",
     "ParameterValue": ""
 }, {
@@ -41,12 +35,6 @@
     "ParameterKey": "NameofthePipeline",
     "ParameterValue": "BlueGreenCICDPipeline"
 },{
-    "ParameterKey": "NewBeanstalkApplicationName",
-    "ParameterValue": "BlueGreenBeanstalkApplication"
-},{
-    "ParameterKey": "NewBlueEnvironmentName",
-    "ParameterValue": "BlueEnvironment"
-},{
     "ParameterKey": "OauthKey",
     "ParameterValue": ""
 },{
@@ -58,7 +46,4 @@
 },{
     "ParameterKey": "OutputBucketName",
     "ParameterValue": ""
-},{
-    "ParameterKey": "SolutionStackForNewBeanstalkEnv",
-    "ParameterValue": "64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1"
 }]
