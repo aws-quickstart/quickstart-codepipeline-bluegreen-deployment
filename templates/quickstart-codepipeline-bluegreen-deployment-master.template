@@ -38,12 +38,7 @@
                         "BeanstalkSourceStageS3BucketKey",
                         "ExistingBlueEnvironmentName",
                         "ExistingBeanstalkApplicationName",
-                        "NewBlueEnvironmentName",
-                        "GreenEnvironmentName",
-                        "NewBeanstalkApplicationName",
-                        "SolutionStackForNewBeanstalkEnv",
-                        "AppPackageS3Bucket",
-                        "AppPackageS3key"
+                        "GreenEnvironmentName"
                     ]
                 },
                 {
@@ -100,23 +95,8 @@
                 "ExistingBeanstalkApplicationName": {
                     "default": "Existing Beanstalk Application Name"
                 },
-                "NewBlueEnvironmentName": {
-                    "default": "New Blue Environment Name"
-                },
                 "GreenEnvironmentName": {
                     "default": "Green Environment Name"
-                },
-                "NewBeanstalkApplicationName": {
-                    "default": "New Beanstalk Application"
-                },
-                "SolutionStackForNewBeanstalkEnv": {
-                    "default": "Solution Stack for Beanstalk Environment"
-                },
-                "AppPackageS3Bucket": {
-                    "default": "Sample Environment App Bucket"
-                },
-                "AppPackageS3key": {
-                    "default": "Sample Environment App Bucket key"
                 },
                 "AdministratorEmail": {
                     "default": "Email Address"
@@ -195,6 +175,17 @@
             ]
         }
     },
+    "Mappings": {
+        "SampleBeantalkparameters": {
+            "php": {
+                "NewBlueEnvironmentName": "BlueEnvironment",
+                "NewBeanstalkApplicationName": "BlueGreenBeanstalkApplication",
+                "SolutionStackForNewBeanstalkEnv": "64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1",
+                "AppPackageS3Bucket": "elasticbeanstalk-samples",
+                "AppPackageS3key": "php-sample.zip"
+            }
+        }
+    },
     "Parameters": {
         "AdministratorEmail": {
             "Type": "String",
@@ -224,42 +215,17 @@
         "ExistingBlueEnvironmentName": {
             "Type": "String",
             "Default": "",
-            "Description": "OPTIONAL: Name of the Existing Beanstalk Environment as Blue Environment. Leave it blank if you want to create a new Environment. Provide a value to this parameter for which you would like to utilize the cost efficient Blue-Green deployments by creating a temporary cloned environment for routing the live traffic when this environment is in the Deployment/Test lifecycle"
+            "Description": "OPTIONAL: Name of the Existing Beanstalk Environment as Blue Environment. Leave it blank if you want to create a new sample Environment with 'php' solution stack. Provide a value to this parameter for which you would like to utilize the cost efficient Blue-Green deployments by creating a temporary cloned environment for routing the live traffic when this environment is in the Deployment/Test lifecycle"
         },
         "ExistingBeanstalkApplicationName": {
             "Type": "String",
             "Default": "",
-            "Description": "OPTIONAL: Required if the parameter 'ExistingBlueEnvironmentName' is provided. Give the Name of the Existing Beantalk Application where the existing Beanstalk Environment is running. Leave it blank if you want to create a new Application"
-        },
-        "NewBlueEnvironmentName": {
-            "Type": "String",
-            "Default": "BlueEnvironment",
-            "Description": "Provide a name for creating a new Beanstalk Environment as Blue Environment that uses a Sample Application. This is the main environment from which a temporary clone called 'Green Environment' will be created to route the live traffic until the deployment is completed and tested with this one.Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' property empty"
+            "Description": "OPTIONAL: Required if the parameter 'Existing Blue Environment Name' is provided. Give the Name of the Existing Beantalk Application where the existing Beanstalk Environment is running. Leaving this blank will create a new sample Application. You must provide a value to this Parameter if you provide the value for 'Existing Blue Environment Name'"
         },
         "GreenEnvironmentName": {
             "Type": "String",
             "Default": "GreenEnvironment",
             "Description": "Provide a Name for the Green Environment, which will be the clone of the Blue Environment where the traffic will be routed temporarily for the amount of time the Blue Environment is completed with the deployment and tested. After the successful deployment to Blue Environment, the traffic will be routed back to Blue and the Green Environment will be terminated"
-        },
-        "NewBeanstalkApplicationName": {
-            "Type": "String",
-            "Default": "BlueGreenBeanstalkApplication",
-            "Description": "Provide a name for a new Beantalk Application where the new Blue Environment and the clone will be created. If not provided, the name will be 'BlueGreenBeanstalkApplication' by default. Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' and 'ExistingBeanstalkApplicationName' property empty"
-        },
-        "SolutionStackForNewBeanstalkEnv": {
-            "Type": "String",
-            "Default": "64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1",
-            "Description": "Provide a name for the Beanstalk Solution for launching the new Blue Environment. If not provided, the default will be a PHP solution stack. Please refer the following document https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/concepts.platforms.html for all the solution stack values. Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' property empty"
-        },
-        "AppPackageS3Bucket": {
-            "Type": "String",
-            "Default": "elasticbeanstalk-samples",
-            "Description": "Provide the S3 bucket where the Application Package exists for creating a new Beanstalk environment. This parameter can be ignored if using an existing Environment."
-        },
-        "AppPackageS3key": {
-            "Type": "String",
-            "Default": "php-sample.zip",
-            "Description": "Provide the S3 bucket key with the zip file package name for creating a new Beanstalk environment. This parameter can be ignored if using an existing Environment"
         },
         "GitToS3integration": {
             "Type": "String",
@@ -401,22 +367,42 @@
                         "Ref": "ExistingBeanstalkApplicationName"
                     },
                     "NewBlueEnvironmentName": {
-                        "Ref": "NewBlueEnvironmentName"
+                        "Fn::FindInMap": [
+                            "SampleBeantalkparameters",
+                            "php",
+                            "NewBlueEnvironmentName"
+                        ]
                     },
                     "GreenEnvironmentName": {
                         "Ref": "GreenEnvironmentName"
                     },
                     "NewBeanstalkApplicationName": {
-                        "Ref": "NewBeanstalkApplicationName"
+                        "Fn::FindInMap": [
+                            "SampleBeantalkparameters",
+                            "php",
+                            "NewBeanstalkApplicationName"
+                        ]
                     },
                     "SolutionStackForNewBeanstalkEnv": {
-                        "Ref": "SolutionStackForNewBeanstalkEnv"
+                        "Fn::FindInMap": [
+                            "SampleBeantalkparameters",
+                            "php",
+                            "SolutionStackForNewBeanstalkEnv"
+                        ]
                     },
                     "AppPackageS3Bucket": {
-                        "Ref": "AppPackageS3Bucket"
+                        "Fn::FindInMap": [
+                            "SampleBeantalkparameters",
+                            "php",
+                            "AppPackageS3Bucket"
+                        ]
                     },
                     "AppPackageS3key": {
-                        "Ref": "AppPackageS3key"
+                        "Fn::FindInMap": [
+                            "SampleBeantalkparameters",
+                            "php",
+                            "AppPackageS3key"
+                        ]
                     }
                 }
             }
@@ -508,7 +494,11 @@
                         "Fn::If": [
                             "CreateNewBeanstalkApp",
                             {
-                                "Ref": "NewBeanstalkApplicationName"
+                                "Fn::FindInMap": [
+                                    "SampleBeantalkparameters",
+                                    "php",
+                                    "NewBeanstalkApplicationName"
+                                ]
                             },
                             {
                                 "Ref": "ExistingBeanstalkApplicationName"
