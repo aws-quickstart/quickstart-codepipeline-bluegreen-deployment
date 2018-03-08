@@ -12,7 +12,7 @@
     "ParameterValue": ""
 }, {
     "ParameterKey": "BeanstalkSourceStageS3BucketKey",
-    "ParameterValue": "php-sample.zip"
+    "ParameterValue": "ckirankumar1989/BeanstalkPHPSample/master/BeanstalkPHPSample.zip"
 },{
     "ParameterKey": "CustomDomainName",
     "ParameterValue": ""
@@ -39,11 +39,5 @@
     "ParameterValue": ""
 },{
     "ParameterKey": "OauthSecret",
-    "ParameterValue": ""
-},{
-    "ParameterKey": "OutputBucketKey",
-    "ParameterValue": "ckirankumar1989/BeanstalkPHPSample/master/BeanstalkPHPSample.zip"
-},{
-    "ParameterKey": "OutputBucketName",
     "ParameterValue": ""
 }]

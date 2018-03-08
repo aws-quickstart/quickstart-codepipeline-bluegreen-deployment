@@ -40,7 +40,4 @@
 },{
     "ParameterKey": "OauthSecret",
     "ParameterValue": ""
-},{
-    "ParameterKey": "OutputBucketName",
-    "ParameterValue": ""
 }]
