@@ -30,10 +30,10 @@
     "ParameterValue": "false"
 },{
     "ParameterKey": "GreenEnvironmentName",
-    "ParameterValue": "GreenEnvironment"
+    "ParameterValue": "GreenEnvironment4"
 },{
     "ParameterKey": "NameofthePipeline",
-    "ParameterValue": "BlueGreenCICDPipeline"
+    "ParameterValue": "BlueGreenCICDPipeline4"
 },{
     "ParameterKey": "OauthKey",
     "ParameterValue": ""

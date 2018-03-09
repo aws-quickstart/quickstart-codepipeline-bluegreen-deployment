@@ -24,16 +24,10 @@
     "ParameterValue": "false"
 },{
     "ParameterKey": "GreenEnvironmentName",
-    "ParameterValue": "GreenEnvironment"
+    "ParameterValue": "GreenEnvironment3"
 },{
     "ParameterKey": "NameofthePipeline",
-    "ParameterValue": "BlueGreenCICDPipeline"
-},{
-    "ParameterKey": "NewBeanstalkApplicationName",
-    "ParameterValue": "BlueGreenBeanstalkApplication"
-},{
-    "ParameterKey": "NewBlueEnvironmentName",
-    "ParameterValue": "BlueEnvironment"
+    "ParameterValue": "BlueGreenCICDPipeline3"
 },{
     "ParameterKey": "OauthKey",
     "ParameterValue": ""
