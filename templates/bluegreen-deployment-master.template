@@ -278,6 +278,35 @@
             "Type": "String"
         }
     },
+    "Rules": {
+        "CheckforBeanstalkSourceBucketKey": {
+            "RuleCondition": {
+                "Fn::Equals": [
+                    "",
+                    {
+                        "Ref": "BeanstalkSourceStageS3BucketKey"
+                    }
+                ]
+            },
+            "Assertions": [
+                {
+                    "Assert": {
+                        "Fn::Not": [
+                            {
+                                "Fn::Equals": [
+                                    "",
+                                    {
+                                        "Ref": "BeanstalkSourceStageS3BucketKey"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "AssertDescription": "Parameter 'BeanstalkSourceStageS3BucketKey' requires a value"
+                }
+            ]
+        }
+    },
     "Resources": {
         "GittoS3IntegrationStack": {
             "Condition": "CreateGittoS3Integration",
