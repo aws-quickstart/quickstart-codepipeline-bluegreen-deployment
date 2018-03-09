@@ -197,7 +197,7 @@
         },
         "BeanstalkSourceStageS3BucketKey": {
             "Default": "",
-            "Description": "Path to the Beanstalk application source package (in .zip format) that will trigger CodePipeline Source Stage. If the 'GitToS3Integration' parameter is set to 'true', then this parameter is the S3 Bucket key where the zip file output should be placed by the Git Webhooks, which is fed as an input to the Pipeline Source Stage. The key should be in the format: 'git-user/git-repository/git-user_git-repository.zip'. This value differs from one Git repo to another. You may refer the https://s3.amazonaws.com/quickstart-reference/git2s3/latest/doc/git-to-amazon-s3-using-webhooks.pdf documentation 'Deployment Steps' section for more information",
+            "Description": "Path to the Beanstalk application source package (in .zip format) that will trigger CodePipeline Source Stage. If the 'GitToS3Integration' parameter is set to 'true', this parameter is the S3 Bucket key where the zip file will be placed by the Git Webhooks and fed as an input to the Pipeline Source Stage. The key should be in the format: 'git-user/git-repository/git-user_git-repository.zip'. This value differs from one Git repo to another. You may refer the https://s3.amazonaws.com/quickstart-reference/git2s3/latest/doc/git-to-amazon-s3-using-webhooks.pdf documentation 'Deployment Steps' section for more information",
             "Type": "String"
         },
         "BeanstalkSourceStageS3BucketName": {
