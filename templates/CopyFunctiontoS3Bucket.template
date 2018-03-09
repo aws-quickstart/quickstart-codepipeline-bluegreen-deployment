@@ -28,6 +28,20 @@
         }
     },
     "Parameters": {
+        "BeanstalkSourceStageS3BucketName": {
+            "Default": "",
+            "Description": "Provide the S3 bucket name where the application package can be uploaded/is uploaded for the CodePipeline Source Stage. If not provided, a bucket will be created. This can be ignored if Git2S3GitToS3integration parameter is set to 'true'",
+            "Type": "String"
+        },
+        "GitToS3integration": {
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Default": "false",
+            "Description": "Select 'true' if you want to have GittoS3 integration setup. If not leave it as default 'false' ",
+            "Type": "String"
+        },
         "QSS3BucketName": {
             "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
             "ConstraintDescription": "Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
@@ -41,134 +55,67 @@
             "Default": "codepipeline-bluegreen-deployment/latest/",
             "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
             "Type": "String"
-        },
-        "GitToS3integration": {
-            "Type": "String",
-            "Default": "false",
-            "AllowedValues": [
-                "true",
-                "false"
-            ],
-            "Description": "Select 'true' if you want to have GittoS3 integration setup. If not leave it as default 'false' "
-        },
-        "BeanstalkSourceStageS3BucketName": {
-            "Type": "String",
-            "Default": "",
-            "Description": "Provide the S3 bucket name where the application package can be uploaded/is uploaded for the CodePipeline Source Stage. If not provided, a bucket will be created. This can be ignored if Git2S3GitToS3integration parameter is set to 'true'"
         }
     },
     "Resources": {
-        "LambdaZipsBucket": {
-            "Type": "AWS::S3::Bucket",
+        "BeanstalkSourceBucket": {
+            "Condition": "CreateBucketForBeanstalkSource",
             "Properties": {
+                "Tags": [],
                 "VersioningConfiguration": {
                     "Status": "Enabled"
-                },
-                "Tags": []
-            }
+                }
+            },
+            "Type": "AWS::S3::Bucket"
         },
-        "CopyZips": {
-            "Type": "AWS::CloudFormation::CustomResource",
+        "CodePipelineArtifactStore": {
             "Properties": {
+                "Tags": []
+            },
+            "Type": "AWS::S3::Bucket"
+        },
+        "CodePipelineArtifactStoreCleanUp": {
+            "Properties": {
+                "DestBucket": {
+                    "Ref": "CodePipelineArtifactStore"
+                },
                 "ServiceToken": {
                     "Fn::GetAtt": [
-                        "CopyZipsFunction",
+                        "S3CleanUpFunction",
                         "Arn"
                     ]
-                },
+                }
+            },
+            "Type": "AWS::CloudFormation::CustomResource"
+        },
+        "CopyZips": {
+            "Properties": {
                 "DestBucket": {
                     "Ref": "LambdaZipsBucket"
-                },
-                "SourceBucket": {
-                    "Ref": "QSS3BucketName"
-                },
-                "Prefix": {
-                    "Ref": "QSS3KeyPrefix"
                 },
                 "Objects": [
                     "functions/packages/CreateEnvironment/creategreenenv.zip",
                     "functions/packages/SwapEnvironments/swapenvironments.zip",
                     "functions/packages/TestBlueEnvironment/testBlueenvironment.zip",
                     "functions/packages/TerminateandReSwap/terminategreenenv.zip"
-                ]
-            }
-        },
-        "CopyZipsRole": {
-            "Type": "AWS::IAM::Role",
-            "Properties": {
-                "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Service": "lambda.amazonaws.com"
-                            },
-                            "Action": "sts:AssumeRole"
-                        }
-                    ]
-                },
-                "ManagedPolicyArns": [
-                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
                 ],
-                "Path": "/",
-                "Policies": [
-                    {
-                        "PolicyName": "lambda-copier",
-                        "PolicyDocument": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "s3:GetObject"
-                                    ],
-                                    "Resource": [
-                                        {
-                                            "Fn::Sub": "arn:aws:s3:::${QSS3BucketName}/${QSS3KeyPrefix}*"
-                                        }
-                                    ]
-                                },
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "s3:PutObject",
-                                        "s3:DeleteObject",
-                                        "s3:GetObject",
-                                        "s3:ListBucket",
-                                        "s3:ListBucketVersions",
-                                        "s3:DeleteObjectVersion",
-                                        "s3:GetObjectVersion",
-                                        "s3:GetBucketVersioning"
-                                    ],
-                                    "Resource": [
-                                        {
-                                            "Fn::Sub": "arn:aws:s3:::${LambdaZipsBucket}/${QSS3KeyPrefix}*"
-                                        },
-                                        {
-                                            "Fn::Sub": "arn:aws:s3:::${LambdaZipsBucket}"
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        },
-        "CopyZipsFunction": {
-            "Type": "AWS::Lambda::Function",
-            "Properties": {
-                "Description": "Copies objects from a source S3 bucket to a destination",
-                "Handler": "index.handler",
-                "Runtime": "python2.7",
-                "Role": {
+                "Prefix": {
+                    "Ref": "QSS3KeyPrefix"
+                },
+                "ServiceToken": {
                     "Fn::GetAtt": [
-                        "CopyZipsRole",
+                        "CopyZipsFunction",
                         "Arn"
                     ]
                 },
-                "Timeout": 240,
+                "SourceBucket": {
+                    "Ref": "QSS3BucketName"
+                }
+            },
+            "Type": "AWS::CloudFormation::CustomResource"
+        },
+        "CopyZipsFunction": {
+            "Properties": {
                 "Code": {
                     "ZipFile": {
                         "Fn::Join": [
@@ -249,22 +196,109 @@
                             ]
                         ]
                     }
-                }
-            }
-        },
-        "S3CleanUpFunction": {
-            "Type": "AWS::Lambda::Function",
-            "Properties": {
-                "Description": "Empty the S3 Buckets while deleting the Stack",
+                },
+                "Description": "Copies objects from a source S3 bucket to a destination",
                 "Handler": "index.handler",
-                "Runtime": "python2.7",
                 "Role": {
                     "Fn::GetAtt": [
-                        "S3CleanUpRole",
+                        "CopyZipsRole",
                         "Arn"
                     ]
                 },
-                "Timeout": 240,
+                "Runtime": "python2.7",
+                "Timeout": 240
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "CopyZipsRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ],
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${QSS3BucketName}/${QSS3KeyPrefix}*"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:DeleteObject",
+                                        "s3:GetObject",
+                                        "s3:ListBucket",
+                                        "s3:ListBucketVersions",
+                                        "s3:DeleteObjectVersion",
+                                        "s3:GetObjectVersion",
+                                        "s3:GetBucketVersioning"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${LambdaZipsBucket}/${QSS3KeyPrefix}*"
+                                        },
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${LambdaZipsBucket}"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "lambda-copier"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "EmptyBeanstalkSourceBucketCleanup": {
+            "Condition": "CreateBucketForBeanstalkSource",
+            "Properties": {
+                "DestBucket": {
+                    "Ref": "BeanstalkSourceBucket"
+                },
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "S3CleanUpFunction",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "AWS::CloudFormation::CustomResource"
+        },
+        "LambdaZipsBucket": {
+            "Properties": {
+                "Tags": [],
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                }
+            },
+            "Type": "AWS::S3::Bucket"
+        },
+        "S3CleanUpFunction": {
+            "Properties": {
                 "Code": {
                     "ZipFile": {
                         "Fn::Join": [
@@ -355,23 +389,33 @@
                             ]
                         ]
                     }
-                }
-            }
+                },
+                "Description": "Empty the S3 Buckets while deleting the Stack",
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "S3CleanUpRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python2.7",
+                "Timeout": 240
+            },
+            "Type": "AWS::Lambda::Function"
         },
         "S3CleanUpRole": {
-            "Type": "AWS::IAM::Role",
             "Properties": {
                 "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
                     "Statement": [
                         {
+                            "Action": "sts:AssumeRole",
                             "Effect": "Allow",
                             "Principal": {
                                 "Service": "lambda.amazonaws.com"
-                            },
-                            "Action": "sts:AssumeRole"
+                            }
                         }
-                    ]
+                    ],
+                    "Version": "2012-10-17"
                 },
                 "ManagedPolicyArns": [
                     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
@@ -379,12 +423,9 @@
                 "Path": "/",
                 "Policies": [
                     {
-                        "PolicyName": "lambda-copier",
                         "PolicyDocument": {
-                            "Version": "2012-10-17",
                             "Statement": [
                                 {
-                                    "Effect": "Allow",
                                     "Action": [
                                         "s3:PutObject",
                                         "s3:DeleteObject",
@@ -395,6 +436,7 @@
                                         "s3:GetObjectVersion",
                                         "s3:GetBucketVersioning"
                                     ],
+                                    "Effect": "Allow",
                                     "Resource": {
                                         "Fn::If": [
                                             "CreateBucketForBeanstalkSource",
@@ -423,56 +465,14 @@
                                         ]
                                     }
                                 }
-                            ]
-                        }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "lambda-copier"
                     }
                 ]
-            }
-        },
-        "CodePipelineArtifactStoreCleanUp": {
-            "Type": "AWS::CloudFormation::CustomResource",
-            "Properties": {
-                "ServiceToken": {
-                    "Fn::GetAtt": [
-                        "S3CleanUpFunction",
-                        "Arn"
-                    ]
-                },
-                "DestBucket": {
-                    "Ref": "CodePipelineArtifactStore"
-                }
-            }
-        },
-        "CodePipelineArtifactStore": {
-            "Type": "AWS::S3::Bucket",
-            "Properties": {
-                "Tags": []
-            }
-        },
-        "BeanstalkSourceBucket": {
-            "Condition": "CreateBucketForBeanstalkSource",
-            "Type": "AWS::S3::Bucket",
-            "Properties": {
-                "VersioningConfiguration": {
-                    "Status": "Enabled"
-                },
-                "Tags": []
-            }
-        },
-        "EmptyBeanstalkSourceBucketCleanup": {
-            "Condition": "CreateBucketForBeanstalkSource",
-            "Type": "AWS::CloudFormation::CustomResource",
-            "Properties": {
-                "ServiceToken": {
-                    "Fn::GetAtt": [
-                        "S3CleanUpFunction",
-                        "Arn"
-                    ]
-                },
-                "DestBucket": {
-                    "Ref": "BeanstalkSourceBucket"
-                }
-            }
+            },
+            "Type": "AWS::IAM::Role"
         }
     },
     "Outputs": {

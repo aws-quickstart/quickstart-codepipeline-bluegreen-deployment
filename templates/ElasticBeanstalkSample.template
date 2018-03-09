@@ -2,18 +2,18 @@
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "Sample Beanstalk environmment template",
     "Conditions": {
-        "CreateNewBeanstalkEnv": {
-            "Fn::Equals": [
-                {
-                    "Ref": "ExistingBlueEnvironmentName"
-                },
-                ""
-            ]
-        },
         "CreateNewBeanstalkApp": {
             "Fn::Equals": [
                 {
                     "Ref": "ExistingBeanstalkApplicationName"
+                },
+                ""
+            ]
+        },
+        "CreateNewBeanstalkEnv": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExistingBlueEnvironmentName"
                 },
                 ""
             ]
@@ -28,51 +28,50 @@
         }
     },
     "Parameters": {
-        "ExistingBlueEnvironmentName": {
-            "Type": "String",
-            "Default": "",
-            "Description": "Name of the Existing Beanstalk Environment as Blue Environment. Leave it blank if you want to create a new Environment. Provide a value to this parameter for which you would like to utilize the cost efficient Blue-Green deployments by creating a temporary cloned environment for routing the live traffic when this environment is in the Deployment/Test lifecycle"
-        },
-        "ExistingBeanstalkApplicationName": {
-            "Type": "String",
-            "Default": "",
-            "Description": "OPTIONAL: Required if the parameter 'ExistingBlueEnvironmentName' is provided. Give the Name of the Existing Beantalk Application where the existing Beanstalk Environment is running. Leave in blank if you want to create a new Application"
-        },
-        "NewBlueEnvironmentName": {
-            "Type": "String",
-            "Default": "BlueEnvironment",
-            "Description": "Provide a name for creating a new Beanstalk Environment as Blue Environment that uses a Sample Application. This is the main environment from which a temporary clone called 'Green Environment' will be created to route the live traffic until the deployment is completed and tested with this one. Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' property empty"
-        },
-        "GreenEnvironmentName": {
-            "Type": "String",
-            "Default": "GreenEnvironment",
-            "Description": "Provide a Name for the Green Environment, which will be the clone of the Blue Environment where the traffic will be routed temporarily for the amount of time the Blue Environment is completed with the deployment and tested. After the successful deployment to Blue Environment, the traffic will be routed back to Blue and the Green Environment will be terminated"
-        },
-        "NewBeanstalkApplicationName": {
-            "Type": "String",
-            "Default": "BlueGreenBeanstalkApplication",
-            "Description": "OPTIONAL:Provide a name for a new Beantalk Application where the new Blue Environment and the clone will be created. If not provided, the name will be 'BlueGreenBeanstalkApplication' by default. Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' and 'ExistingBeanstalkApplicationName' property empty"
-        },
-        "SolutionStackForNewBeanstalkEnv": {
-            "Type": "String",
-            "Default": "64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1",
-            "Description": "Provide a name for the Beanstalk Solution stack for launching the new Blue Environment. If not provided, the default will be a PHP solution stack. Please refer the following document https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/concepts.platforms.html for all the solution stack values. Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' property empty"
-        },
         "AppPackageS3Bucket": {
-            "Type": "String",
             "Default": "elasticbeanstalk-samples",
-            "Description": "Provide the S3 bucket where the Application Package exists for creating a new Beanstalk environment. This parameter can be ignored if using an existing Environment."
+            "Description": "Provide the S3 bucket where the Application Package exists for creating a new Beanstalk environment. This parameter can be ignored if using an existing Environment.",
+            "Type": "String"
         },
         "AppPackageS3key": {
-            "Type": "String",
             "Default": "php-sample.zip",
-            "Description": "Provide the S3 bucket key with the zip file package name for creating a new Beanstalk environment. This parameter can be ignored if using an existing Environment"
+            "Description": "Provide the S3 bucket key with the zip file package name for creating a new Beanstalk environment. This parameter can be ignored if using an existing Environment",
+            "Type": "String"
+        },
+        "ExistingBeanstalkApplicationName": {
+            "Default": "",
+            "Description": "OPTIONAL: Required if the parameter 'ExistingBlueEnvironmentName' is provided. Give the Name of the Existing Beantalk Application where the existing Beanstalk Environment is running. Leave in blank if you want to create a new Application",
+            "Type": "String"
+        },
+        "ExistingBlueEnvironmentName": {
+            "Default": "",
+            "Description": "Name of the Existing Beanstalk Environment as Blue Environment. Leave it blank if you want to create a new Environment. Provide a value to this parameter for which you would like to utilize the cost efficient Blue-Green deployments by creating a temporary cloned environment for routing the live traffic when this environment is in the Deployment/Test lifecycle",
+            "Type": "String"
+        },
+        "GreenEnvironmentName": {
+            "Default": "GreenEnvironment",
+            "Description": "Provide a Name for the Green Environment, which will be the clone of the Blue Environment where the traffic will be routed temporarily for the amount of time the Blue Environment is completed with the deployment and tested. After the successful deployment to Blue Environment, the traffic will be routed back to Blue and the Green Environment will be terminated",
+            "Type": "String"
+        },
+        "NewBeanstalkApplicationName": {
+            "Default": "BlueGreenBeanstalkApplication",
+            "Description": "OPTIONAL:Provide a name for a new Beantalk Application where the new Blue Environment and the clone will be created. If not provided, the name will be 'BlueGreenBeanstalkApplication' by default. Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' and 'ExistingBeanstalkApplicationName' property empty",
+            "Type": "String"
+        },
+        "NewBlueEnvironmentName": {
+            "Default": "BlueEnvironment",
+            "Description": "Provide a name for creating a new Beanstalk Environment as Blue Environment that uses a Sample Application. This is the main environment from which a temporary clone called 'Green Environment' will be created to route the live traffic until the deployment is completed and tested with this one. Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' property empty",
+            "Type": "String"
+        },
+        "SolutionStackForNewBeanstalkEnv": {
+            "Default": "64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1",
+            "Description": "Provide a name for the Beanstalk Solution stack for launching the new Blue Environment. If not provided, the default will be a PHP solution stack. Please refer the following document https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/concepts.platforms.html for all the solution stack values. Value for this parameter is required only when you leave the 'ExistingBlueEnvironmentName' property empty",
+            "Type": "String"
         }
     },
     "Resources": {
         "BeanstalkAppVersion": {
             "Condition": "CreateNewBeanstalkEnv",
-            "Type": "AWS::ElasticBeanstalk::ApplicationVersion",
             "Properties": {
                 "ApplicationName": {
                     "Fn::If": [
@@ -113,21 +112,21 @@
                         "Ref": "AppPackageS3key"
                     }
                 }
-            }
+            },
+            "Type": "AWS::ElasticBeanstalk::ApplicationVersion"
         },
         "BeanstalkApplication": {
             "Condition": "CreateNewBeanstalkApp",
-            "Type": "AWS::ElasticBeanstalk::Application",
             "Properties": {
                 "ApplicationName": {
                     "Ref": "NewBeanstalkApplicationName"
                 },
                 "Description": "AWS Elastic Beanstalk PHP Sample Application"
-            }
+            },
+            "Type": "AWS::ElasticBeanstalk::Application"
         },
         "BeanstalkEnvironment": {
             "Condition": "CreateNewBeanstalkEnv",
-            "Type": "AWS::ElasticBeanstalk::Environment",
             "Properties": {
                 "ApplicationName": {
                     "Fn::If": [
@@ -144,12 +143,6 @@
                 "EnvironmentName": {
                     "Ref": "NewBlueEnvironmentName"
                 },
-                "SolutionStackName": {
-                    "Ref": "SolutionStackForNewBeanstalkEnv"
-                },
-                "VersionLabel": {
-                    "Ref": "BeanstalkAppVersion"
-                },
                 "OptionSettings": [
                     {
                         "Namespace": "aws:autoscaling:launchconfiguration",
@@ -165,68 +158,18 @@
                             "Ref": "BeanstalkServiceRole"
                         }
                     }
-                ]
-            }
-        },
-        "BeanstalkServiceRole": {
-            "Condition": "CreateNewBeanstalkEnv",
-            "Type": "AWS::IAM::Role",
-            "Properties": {
-                "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Sid": "",
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Service": "elasticbeanstalk.amazonaws.com"
-                            },
-                            "Action": "sts:AssumeRole",
-                            "Condition": {
-                                "StringEquals": {
-                                    "sts:ExternalId": "elasticbeanstalk"
-                                }
-                            }
-                        }
-                    ]
-                },
-                "Policies": [
-                    {
-                        "PolicyName": "root",
-                        "PolicyDocument": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "elasticloadbalancing:DescribeInstanceHealth",
-                                        "ec2:DescribeInstances",
-                                        "ec2:DescribeInstanceStatus",
-                                        "ec2:GetConsoleOutput",
-                                        "ec2:AssociateAddress",
-                                        "ec2:DescribeAddresses",
-                                        "ec2:DescribeSecurityGroups",
-                                        "sqs:GetQueueAttributes",
-                                        "sqs:GetQueueUrl",
-                                        "autoscaling:DescribeAutoScalingGroups",
-                                        "autoscaling:DescribeAutoScalingInstances",
-                                        "autoscaling:DescribeScalingActivities",
-                                        "autoscaling:DescribeNotificationConfigurations"
-                                    ],
-                                    "Resource": [
-                                        "*"
-                                    ]
-                                }
-                            ]
-                        }
-                    }
                 ],
-                "Path": "/"
-            }
+                "SolutionStackName": {
+                    "Ref": "SolutionStackForNewBeanstalkEnv"
+                },
+                "VersionLabel": {
+                    "Ref": "BeanstalkAppVersion"
+                }
+            },
+            "Type": "AWS::ElasticBeanstalk::Environment"
         },
         "BeanstalkInstanceProfile": {
             "Condition": "CreateNewBeanstalkEnv",
-            "Type": "AWS::IAM::InstanceProfile",
             "Properties": {
                 "Path": "/",
                 "Roles": [
@@ -234,36 +177,34 @@
                         "Ref": "BeanstalkInstanceProfileRole"
                     }
                 ]
-            }
+            },
+            "Type": "AWS::IAM::InstanceProfile"
         },
         "BeanstalkInstanceProfileRole": {
             "Condition": "CreateNewBeanstalkEnv",
-            "Type": "AWS::IAM::Role",
             "Properties": {
                 "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
                     "Statement": [
                         {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
                             "Effect": "Allow",
                             "Principal": {
                                 "Service": [
                                     "ec2.amazonaws.com"
                                 ]
-                            },
-                            "Action": [
-                                "sts:AssumeRole"
-                            ]
+                            }
                         }
-                    ]
+                    ],
+                    "Version": "2012-10-17"
                 },
+                "Path": "/",
                 "Policies": [
                     {
-                        "PolicyName": "root",
                         "PolicyDocument": {
-                            "Version": "2012-10-17",
                             "Statement": [
                                 {
-                                    "Sid": "BucketAccess",
                                     "Action": [
                                         "s3:Get*",
                                         "s3:List*",
@@ -334,18 +275,18 @@
                                                 ]
                                             ]
                                         }
-                                    ]
+                                    ],
+                                    "Sid": "BucketAccess"
                                 },
                                 {
-                                    "Sid": "MetricsAccess",
                                     "Action": [
                                         "cloudwatch:PutMetricData"
                                     ],
                                     "Effect": "Allow",
-                                    "Resource": "*"
+                                    "Resource": "*",
+                                    "Sid": "MetricsAccess"
                                 },
                                 {
-                                    "Sid": "CloudWatchLogsAccess",
                                     "Action": [
                                         "logs:PutLogEvents",
                                         "logs:CreateLogStream",
@@ -355,14 +296,73 @@
                                     "Effect": "Allow",
                                     "Resource": [
                                         "arn:aws:logs:*:*:log-group:/aws/elasticbeanstalk*"
+                                    ],
+                                    "Sid": "CloudWatchLogsAccess"
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "root"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "BeanstalkServiceRole": {
+            "Condition": "CreateNewBeanstalkEnv",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Condition": {
+                                "StringEquals": {
+                                    "sts:ExternalId": "elasticbeanstalk"
+                                }
+                            },
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "elasticbeanstalk.amazonaws.com"
+                            },
+                            "Sid": ""
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "elasticloadbalancing:DescribeInstanceHealth",
+                                        "ec2:DescribeInstances",
+                                        "ec2:DescribeInstanceStatus",
+                                        "ec2:GetConsoleOutput",
+                                        "ec2:AssociateAddress",
+                                        "ec2:DescribeAddresses",
+                                        "ec2:DescribeSecurityGroups",
+                                        "sqs:GetQueueAttributes",
+                                        "sqs:GetQueueUrl",
+                                        "autoscaling:DescribeAutoScalingGroups",
+                                        "autoscaling:DescribeAutoScalingInstances",
+                                        "autoscaling:DescribeScalingActivities",
+                                        "autoscaling:DescribeNotificationConfigurations"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "*"
                                     ]
                                 }
-                            ]
-                        }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "root"
                     }
-                ],
-                "Path": "/"
-            }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
         }
     },
     "Outputs": {
