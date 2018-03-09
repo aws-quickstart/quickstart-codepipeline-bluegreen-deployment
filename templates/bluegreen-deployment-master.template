@@ -328,7 +328,7 @@
             "Properties": {
                 "TemplateURL": {
                     "Fn::Sub": [
-                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/ElasticBeanstalkSample.template",
+                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/elasticbeanstalk-sample.template",
                         {
                             "QSS3Region": {
                                 "Fn::If": [
@@ -393,7 +393,7 @@
             "Properties": {
                 "TemplateURL": {
                     "Fn::Sub": [
-                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/CopyFunctiontoS3Bucket.template",
+                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/copyfunction-to-s3bucket.template",
                         {
                             "QSS3Region": {
                                 "Fn::If": [
@@ -426,7 +426,7 @@
             "Properties": {
                 "TemplateURL": {
                     "Fn::Sub": [
-                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/CodePipelineStack.template",
+                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/codepipeline-stack.template",
                         {
                             "QSS3Region": {
                                 "Fn::If": [
