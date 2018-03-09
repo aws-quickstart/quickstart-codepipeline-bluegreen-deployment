@@ -6,7 +6,28 @@
             "ParameterGroups": [
                 {
                     "Label": {
-                        "default": "Git2s3 Setup parameters. Valid only when GitToS3integration parameter is set to true. Ignore if GitToS3integration is set to false"
+                        "default": "AWS Elastic Beanstalk configuration"
+                    },
+                    "Parameters": [
+                        "BeanstalkSourceStageS3BucketName",
+                        "BeanstalkSourceStageS3BucketKey",
+                        "ExistingBlueEnvironmentName",
+                        "ExistingBeanstalkApplicationName",
+                        "GreenEnvironmentName"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "AWS CodePipeline parameters"
+                    },
+                    "Parameters": [
+                        "AdministratorEmail",
+                        "NameofthePipeline"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Git2s3 setup parameters. Valid only when GitToS3integration parameter is set to true. Ignore otherwise."
                     },
                     "Parameters": [
                         "GitToS3integration",
@@ -25,27 +46,6 @@
                     "Parameters": [
                         "QSS3BucketName",
                         "QSS3KeyPrefix"
-                    ]
-                },
-                {
-                    "Label": {
-                        "default": "AWS Elastic Beanstalk Configuration"
-                    },
-                    "Parameters": [
-                        "BeanstalkSourceStageS3BucketName",
-                        "BeanstalkSourceStageS3BucketKey",
-                        "ExistingBlueEnvironmentName",
-                        "ExistingBeanstalkApplicationName",
-                        "GreenEnvironmentName"
-                    ]
-                },
-                {
-                    "Label": {
-                        "default": "AWS CodePipeline Parameters"
-                    },
-                    "Parameters": [
-                        "AdministratorEmail",
-                        "NameofthePipeline"
                     ]
                 }
             ],
@@ -75,10 +75,10 @@
                     "default": "Quick Start S3 Key Prefix"
                 },
                 "BeanstalkSourceStageS3BucketName": {
-                    "default": "Beanstalk Source Stage Bucket"
+                    "default": "Beanstalk Source Stage S3 Bucket"
                 },
                 "BeanstalkSourceStageS3BucketKey": {
-                    "default": "Beanstalk Source Stage Bucket key"
+                    "default": "Beanstalk Source Stage S3 Bucket key"
                 },
                 "ExistingBlueEnvironmentName": {
                     "default": "Existing Blue Environmemt Name"
@@ -90,10 +90,10 @@
                     "default": "Green Environment Name"
                 },
                 "AdministratorEmail": {
-                    "default": "Email Address"
+                    "default": "Admin Email Address"
                 },
                 "NameofthePipeline": {
-                    "default": "Name for the Pipeline"
+                    "default": "Name of the Pipeline"
                 }
             }
         }
@@ -180,28 +180,28 @@
     "Parameters": {
         "AdministratorEmail": {
             "Type": "String",
-            "Description": "Provide an administrator email for Pipeline Manual Approval. SNS subscription Email will be sent to this address for the Manual Approval Stage. This is mandatory for the Manual approval Stage of the CodePipeline",
+            "Description": "Provide an administrator email address for Manual Approval stage in the pipeline. SNS subscription email will be sent to this address.",
             "AllowedPattern": "^[a-z0-9]+(\\.[_a-z0-9]+)*@[a-z0-9-]+(\\.[a-z0-9-]+)*(\\.[a-z]{2,15})$",
-            "ConstraintDescription": "Can contain only ASCII characters. This must be in the format of username@email.com"
+            "ConstraintDescription": "Can contain only ASCII characters. This must be in the format of something@email.com"
         },
         "NameofthePipeline": {
             "Type": "String",
             "Default": "BlueGreenCICDPipeline",
-            "Description": "Name of the CICDPipeline used for Blue-Green Deployment",
+            "Description": "Name of the CICDPipeline.",
             "AllowedPattern": "[A-Za-z0-9.@\\-_]+",
-            "ConstraintDescription": "Can contain Only letters, numbers and certain special characters such as  . (period), @ (at sign), - (minus sign), and _ (underscore)",
+            "ConstraintDescription": "Can contain Only letters, numbers and certain special characters such as . (period), @ (at sign), - (hyphen), and _ (underscore)",
             "MinLength": "1",
             "MaxLength": "100"
         },
         "BeanstalkSourceStageS3BucketName": {
             "Type": "String",
             "Default": "",
-            "Description": "OPTIONAL: S3 bucket name where the application package can be uploaded/is uploaded for the CodePipeline Source Stage. If not provided, a bucket will be created. If Git2S3GitToS3integration parameter is set to 'true' and a new bucket will be created, and then this is the Bucket Name where the zip file output will be placed by the Git Webhooks by invoking the API Gateway. If left blank, a bucket name will be automatically generated.Provide this value only when the 'GitToS3integration' parameter is set to true"
+            "Description": "(OPTIONAL) An existing S3 bucket for the source stage of the CodePipeline. If left blank, a bucket will be created. In case of Git2S3GitToS3integration parameter value set to 'true', a new bucket will be created with this name to put the source package (zip file). If left blank, a bucket name will be automatically generated. Provide this value only when the 'GitToS3integration' parameter is set to true"
         },
         "BeanstalkSourceStageS3BucketKey": {
             "Type": "String",
-            "Default": "application-code.zip",
-            "Description": "The zip file name in .zip format that will be uploaded to the SourceStageS3BucketName bucket required by Beanstalk for the CodePipeline Source Stage. This is by default application-code.zip. If the 'GitToS3Integration' parameter is set to 'true', then this parameter is the Bucket key where the zip file output should be placed by the Git Webhooks by invoking the API Gateway, which can be fed as an input to the Pipeline Source Stage. This is mandatory if GitToS3Integration property is set to true. The full key is in the format: 'git-user/git-repository/git-user_git-repository.zip'. This parameter requires a value, without which the pipeline stack fails. This value differs from one Git repo to another. You may refer the https://s3.amazonaws.com/quickstart-reference/git2s3/latest/doc/git-to-amazon-s3-using-webhooks.pdf documentation 'Deployment Steps' section for more information"
+            "Default": "",
+            "Description": "Path to the Beanstalk application source package (in .zip format) that will trigger CodePipeline Source Stage. If the 'GitToS3Integration' parameter is set to 'true', then this parameter is the S3 Bucket key where the zip file output should be placed by the Git Webhooks, which is fed as an input to the Pipeline Source Stage. The key should be in the format: 'git-user/git-repository/git-user_git-repository.zip'. This value differs from one Git repo to another. You may refer the https://s3.amazonaws.com/quickstart-reference/git2s3/latest/doc/git-to-amazon-s3-using-webhooks.pdf documentation 'Deployment Steps' section for more information"
         },
         "ExistingBlueEnvironmentName": {
             "Type": "String",
