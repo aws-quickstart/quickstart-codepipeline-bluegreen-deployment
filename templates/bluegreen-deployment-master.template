@@ -6,7 +6,28 @@
             "ParameterGroups": [
                 {
                     "Label": {
-                        "default": "Git2s3 Setup parameters. Valid only when GitToS3integration parameter is set to true. Ignore if GitToS3integration is set to false"
+                        "default": "AWS Elastic Beanstalk configuration"
+                    },
+                    "Parameters": [
+                        "BeanstalkSourceStageS3BucketName",
+                        "BeanstalkSourceStageS3BucketKey",
+                        "ExistingBlueEnvironmentName",
+                        "ExistingBeanstalkApplicationName",
+                        "GreenEnvironmentName"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "AWS CodePipeline parameters"
+                    },
+                    "Parameters": [
+                        "AdministratorEmail",
+                        "NameofthePipeline"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Git2s3 setup parameters. Valid only when GitToS3integration parameter is set to true. Ignore otherwise."
                     },
                     "Parameters": [
                         "GitToS3integration",
@@ -26,41 +47,41 @@
                         "QSS3BucketName",
                         "QSS3KeyPrefix"
                     ]
-                },
-                {
-                    "Label": {
-                        "default": "AWS Elastic Beanstalk Configuration"
-                    },
-                    "Parameters": [
-                        "BeanstalkSourceStageS3BucketName",
-                        "BeanstalkSourceStageS3BucketKey",
-                        "ExistingBlueEnvironmentName",
-                        "ExistingBeanstalkApplicationName",
-                        "GreenEnvironmentName"
-                    ]
-                },
-                {
-                    "Label": {
-                        "default": "AWS CodePipeline Parameters"
-                    },
-                    "Parameters": [
-                        "AdministratorEmail",
-                        "NameofthePipeline"
-                    ]
                 }
             ],
             "ParameterLabels": {
+                "AdministratorEmail": {
+                    "default": "Admin Email Address"
+                },
                 "AllowedIps": {
                     "default": "Allowed IPs"
                 },
                 "ApiSecret": {
                     "default": "API Secret"
                 },
+                "BeanstalkSourceStageS3BucketKey": {
+                    "default": "Beanstalk Source Stage S3 Bucket key"
+                },
+                "BeanstalkSourceStageS3BucketName": {
+                    "default": "Beanstalk Source Stage S3 Bucket"
+                },
                 "CustomDomainName": {
                     "default": "Custom Domain Name"
                 },
+                "ExistingBeanstalkApplicationName": {
+                    "default": "Existing Beanstalk Application Name"
+                },
+                "ExistingBlueEnvironmentName": {
+                    "default": "Existing Blue Environmemt Name"
+                },
                 "GitToken": {
                     "default": "Git Personal Access Token"
+                },
+                "GreenEnvironmentName": {
+                    "default": "Green Environment Name"
+                },
+                "NameofthePipeline": {
+                    "default": "Name of the Pipeline"
                 },
                 "OauthKey": {
                     "default": "OAuth2 Key"
@@ -73,48 +94,11 @@
                 },
                 "QSS3KeyPrefix": {
                     "default": "Quick Start S3 Key Prefix"
-                },
-                "BeanstalkSourceStageS3BucketName": {
-                    "default": "Beanstalk Source Stage Bucket"
-                },
-                "BeanstalkSourceStageS3BucketKey": {
-                    "default": "Beanstalk Source Stage Bucket key"
-                },
-                "ExistingBlueEnvironmentName": {
-                    "default": "Existing Blue Environmemt Name"
-                },
-                "ExistingBeanstalkApplicationName": {
-                    "default": "Existing Beanstalk Application Name"
-                },
-                "GreenEnvironmentName": {
-                    "default": "Green Environment Name"
-                },
-                "AdministratorEmail": {
-                    "default": "Email Address"
-                },
-                "NameofthePipeline": {
-                    "default": "Name for the Pipeline"
                 }
             }
         }
     },
     "Conditions": {
-        "CreateNewBeanstalkEnv": {
-            "Fn::Equals": [
-                {
-                    "Ref": "ExistingBlueEnvironmentName"
-                },
-                ""
-            ]
-        },
-        "CreateNewBeanstalkApp": {
-            "Fn::Equals": [
-                {
-                    "Ref": "ExistingBeanstalkApplicationName"
-                },
-                ""
-            ]
-        },
         "CreateBeanstalkStack": {
             "Fn::Or": [
                 {
@@ -157,6 +141,22 @@
                 "true"
             ]
         },
+        "CreateNewBeanstalkApp": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExistingBeanstalkApplicationName"
+                },
+                ""
+            ]
+        },
+        "CreateNewBeanstalkEnv": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExistingBlueEnvironmentName"
+                },
+                ""
+            ]
+        },
         "GovCloudCondition": {
             "Fn::Equals": [
                 {
@@ -171,7 +171,7 @@
             "php": {
                 "NewBlueEnvironmentName": "BlueEnvironment",
                 "NewBeanstalkApplicationName": "BlueGreenBeanstalkApplication",
-                "SolutionStackForNewBeanstalkEnv": "64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1",
+                "SolutionStackForNewBeanstalkEnv": "64bit Amazon Linux 2017.09 v2.6.5 running PHP 7.1",
                 "AppPackageS3Bucket": "elasticbeanstalk-samples",
                 "AppPackageS3key": "php-sample.zip"
             }
@@ -179,89 +179,89 @@
     },
     "Parameters": {
         "AdministratorEmail": {
-            "Type": "String",
-            "Description": "Provide an administrator email for Pipeline Manual Approval. SNS subscription Email will be sent to this address for the Manual Approval Stage. This is mandatory for the Manual approval Stage of the CodePipeline",
             "AllowedPattern": "^[a-z0-9]+(\\.[_a-z0-9]+)*@[a-z0-9-]+(\\.[a-z0-9-]+)*(\\.[a-z]{2,15})$",
-            "ConstraintDescription": "Can contain only ASCII characters. This must be in the format of username@email.com"
+            "ConstraintDescription": "Can contain only ASCII characters. This must be in the format of something@email.com",
+            "Description": "Provide an administrator email address for Manual Approval stage in the pipeline. SNS subscription email will be sent to this address.",
+            "Type": "String"
         },
-        "NameofthePipeline": {
-            "Type": "String",
-            "Default": "BlueGreenCICDPipeline",
-            "Description": "Name of the CICDPipeline used for Blue-Green Deployment",
-            "AllowedPattern": "[A-Za-z0-9.@\\-_]+",
-            "ConstraintDescription": "Can contain Only letters, numbers and certain special characters such as  . (period), @ (at sign), - (minus sign), and _ (underscore)",
-            "MinLength": "1",
-            "MaxLength": "100"
+        "AllowedIps": {
+            "Default": "131.103.20.160/27,165.254.145.0/26,104.192.143.0/24",
+            "Description": "OPTIONAL: gitpull method only. Comma seperated list of IP CIDR blocks for source IP authentication. The BitBucket Cloud IP ranges are provided as defaults. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Type": "String"
         },
-        "BeanstalkSourceStageS3BucketName": {
-            "Type": "String",
+        "ApiSecret": {
             "Default": "",
-            "Description": "OPTIONAL: S3 bucket name where the application package can be uploaded/is uploaded for the CodePipeline Source Stage. If not provided, a bucket will be created. If Git2S3GitToS3integration parameter is set to 'true' and a new bucket will be created, and then this is the Bucket Name where the zip file output will be placed by the Git Webhooks by invoking the API Gateway. If left blank, a bucket name will be automatically generated.Provide this value only when the 'GitToS3integration' parameter is set to true"
+            "Description": "OPTIONAL: gitpull method only. WebHook Secrets for use with GitHub Enterprise and GitLab. If a secret is matched IP range authentication is bypassed. Cannot contain: , \\ \"Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "NoEcho": "true",
+            "Type": "String"
         },
         "BeanstalkSourceStageS3BucketKey": {
-            "Type": "String",
-            "Default": "application-code.zip",
-            "Description": "The zip file name in .zip format that will be uploaded to the SourceStageS3BucketName bucket required by Beanstalk for the CodePipeline Source Stage. This is by default application-code.zip. If the 'GitToS3Integration' parameter is set to 'true', then this parameter is the Bucket key where the zip file output should be placed by the Git Webhooks by invoking the API Gateway, which can be fed as an input to the Pipeline Source Stage. This is mandatory if GitToS3Integration property is set to true. The full key is in the format: 'git-user/git-repository/git-user_git-repository.zip'. This parameter requires a value, without which the pipeline stack fails. This value differs from one Git repo to another. You may refer the https://s3.amazonaws.com/quickstart-reference/git2s3/latest/doc/git-to-amazon-s3-using-webhooks.pdf documentation 'Deployment Steps' section for more information"
-        },
-        "ExistingBlueEnvironmentName": {
-            "Type": "String",
             "Default": "",
-            "Description": "OPTIONAL: Name of the Existing Beanstalk Environment as Blue Environment. Leave it blank if you want to create a new sample Environment with 'php' solution stack. Provide a value to this parameter for which you would like to utilize the cost efficient Blue-Green deployments by creating a temporary cloned environment for routing the live traffic when this environment is in the Deployment/Test lifecycle"
+            "Description": "Path to the Beanstalk application source package (in .zip format) that will trigger CodePipeline Source Stage. If the 'GitToS3Integration' parameter is set to 'true', then this parameter is the S3 Bucket key where the zip file output should be placed by the Git Webhooks, which is fed as an input to the Pipeline Source Stage. The key should be in the format: 'git-user/git-repository/git-user_git-repository.zip'. This value differs from one Git repo to another. You may refer the https://s3.amazonaws.com/quickstart-reference/git2s3/latest/doc/git-to-amazon-s3-using-webhooks.pdf documentation 'Deployment Steps' section for more information",
+            "Type": "String"
+        },
+        "BeanstalkSourceStageS3BucketName": {
+            "Default": "",
+            "Description": "(OPTIONAL) An existing S3 bucket for the source stage of the CodePipeline. If left blank, a bucket will be created. In case of Git2S3GitToS3integration parameter value set to 'true', a new bucket will be created with this name to put the source package (zip file). If left blank, a bucket name will be automatically generated. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Type": "String"
+        },
+        "CustomDomainName": {
+            "Default": "",
+            "Description": "OPTIONAL:Use a custom domain name for the webhook endpoint, if left blank API Gateway will create a domain name for you. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Type": "String"
         },
         "ExistingBeanstalkApplicationName": {
-            "Type": "String",
             "Default": "",
-            "Description": "OPTIONAL: Required if the parameter 'Existing Blue Environment Name' is provided. Give the Name of the Existing Beantalk Application where the existing Beanstalk Environment is running. Leaving this blank will create a new sample Application. You must provide a value to this Parameter if you provide the value for 'Existing Blue Environment Name'"
+            "Description": "OPTIONAL: Required if the parameter 'Existing Blue Environment Name' is provided. Give the Name of the Existing Beantalk Application where the existing Beanstalk Environment is running. Leaving this blank will create a new sample Application. You must provide a value to this Parameter if you provide the value for 'Existing Blue Environment Name'",
+            "Type": "String"
         },
-        "GreenEnvironmentName": {
-            "Type": "String",
-            "Default": "GreenEnvironment",
-            "Description": "Provide a Name for the Green Environment, which will be the clone of the Blue Environment where the traffic will be routed temporarily for the amount of time the Blue Environment is completed with the deployment and tested. After the successful deployment to Blue Environment, the traffic will be routed back to Blue and the Green Environment will be terminated"
+        "ExistingBlueEnvironmentName": {
+            "Default": "",
+            "Description": "OPTIONAL: Name of the Existing Beanstalk Environment as Blue Environment. Leave it blank if you want to create a new sample Environment with 'php' solution stack. Provide a value to this parameter for which you would like to utilize the cost efficient Blue-Green deployments by creating a temporary cloned environment for routing the live traffic when this environment is in the Deployment/Test lifecycle",
+            "Type": "String"
         },
         "GitToS3integration": {
-            "Type": "String",
-            "Default": "false",
             "AllowedValues": [
                 "true",
                 "false"
             ],
-            "Description": "Select 'true' if you want to have Git to S3 integration setup. If not leave it as default 'false'. This will allow you to use an existing Git repository to use with the Application deployment to Elastic Beanstalk"
-        },
-        "AllowedIps": {
-            "Description": "OPTIONAL: gitpull method only. Comma seperated list of IP CIDR blocks for source IP authentication. The BitBucket Cloud IP ranges are provided as defaults. Provide this value only when the 'GitToS3integration' parameter is set to true",
-            "Type": "String",
-            "Default": "131.103.20.160/27,165.254.145.0/26,104.192.143.0/24"
-        },
-        "ApiSecret": {
-            "Description": "OPTIONAL: gitpull method only. WebHook Secrets for use with GitHub Enterprise and GitLab. If a secret is matched IP range authentication is bypassed. Cannot contain: , \\ \"Provide this value only when the 'GitToS3integration' parameter is set to true",
-            "Type": "String",
-            "Default": "",
-            "NoEcho": "true"
-        },
-        "CustomDomainName": {
-            "Description": "OPTIONAL:Use a custom domain name for the webhook endpoint, if left blank API Gateway will create a domain name for you. Provide this value only when the 'GitToS3integration' parameter is set to true",
-            "Type": "String",
-            "Default": ""
+            "Default": "false",
+            "Description": "Select 'true' if you want to have Git to S3 integration setup. If not leave it as default 'false'. This will allow you to use an existing Git repository to use with the Application deployment to Elastic Beanstalk",
+            "Type": "String"
         },
         "GitToken": {
-            "NoEcho": "true",
-            "Description": "OPTIONAL:zipdl method only. Personal access token, needed for GitHub Enterprise and GitLab. Provide this value only when the 'GitToS3integration' parameter is set to true",
-            "Type": "String",
+            "ConstraintDescription": "this token must be generated from the git server/provider",
             "Default": "",
-            "ConstraintDescription": "this token must be generated from the git server/provider"
+            "Description": "OPTIONAL:zipdl method only. Personal access token, needed for GitHub Enterprise and GitLab. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "NoEcho": "true",
+            "Type": "String"
+        },
+        "GreenEnvironmentName": {
+            "Default": "GreenEnvironment",
+            "Description": "Provide a Name for the Green Environment, which will be the clone of the Blue Environment where the traffic will be routed temporarily for the amount of time the Blue Environment is completed with the deployment and tested. After the successful deployment to Blue Environment, the traffic will be routed back to Blue and the Green Environment will be terminated",
+            "Type": "String"
+        },
+        "NameofthePipeline": {
+            "AllowedPattern": "[A-Za-z0-9.@\\-_]+",
+            "ConstraintDescription": "Can contain Only letters, numbers and certain special characters such as . (period), @ (at sign), - (hyphen), and _ (underscore)",
+            "Default": "BlueGreenCICDPipeline",
+            "Description": "Name of the CICDPipeline.",
+            "MaxLength": "100",
+            "MinLength": "1",
+            "Type": "String"
         },
         "OauthKey": {
-            "Description": "OPTIONAL: zipdl method only. OAuth2 Key needed for BitBucket. Provide this value only when the 'GitToS3integration' parameter is set to true",
-            "Type": "String",
+            "ConstraintDescription": "this key must be generated from the git server/provider",
             "Default": "",
-            "ConstraintDescription": "this key must be generated from the git server/provider"
+            "Description": "OPTIONAL: zipdl method only. OAuth2 Key needed for BitBucket. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Type": "String"
         },
         "OauthSecret": {
-            "NoEcho": "true",
-            "Description": "OPTIONAL:zipdl method only. OAuth2 Secret needed for BitBucket.Provide this value only when the 'GitToS3integration' parameter is set to true",
-            "Type": "String",
+            "ConstraintDescription": "this secret must be generated from the git server/provider",
             "Default": "",
-            "ConstraintDescription": "this secret must be generated from the git server/provider"
+            "Description": "OPTIONAL:zipdl method only. OAuth2 Secret needed for BitBucket.Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "NoEcho": "true",
+            "Type": "String"
         },
         "QSS3BucketName": {
             "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
@@ -328,7 +328,7 @@
             "Properties": {
                 "TemplateURL": {
                     "Fn::Sub": [
-                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/ElasticBeanstalkSample.template",
+                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/elasticbeanstalk-sample.template",
                         {
                             "QSS3Region": {
                                 "Fn::If": [
@@ -393,7 +393,7 @@
             "Properties": {
                 "TemplateURL": {
                     "Fn::Sub": [
-                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/CopyFunctiontoS3Bucket.template",
+                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/copyfunction-to-s3bucket.template",
                         {
                             "QSS3Region": {
                                 "Fn::If": [
@@ -426,7 +426,7 @@
             "Properties": {
                 "TemplateURL": {
                     "Fn::Sub": [
-                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/CodePipelineStack.template",
+                        "https://${QSS3BucketName}.${QSS3Region}.amazonaws.com/${QSS3KeyPrefix}templates/codepipeline-stack.template",
                         {
                             "QSS3Region": {
                                 "Fn::If": [
@@ -487,8 +487,7 @@
                         ]
                     },
                     "BeanstalkSourceStageBucketKey": {
-                                "Ref": "BeanstalkSourceStageS3BucketKey"
-
+                        "Ref": "BeanstalkSourceStageS3BucketKey"
                     },
                     "BeanstalkSourceStageBucket": {
                         "Fn::If": [
@@ -530,14 +529,18 @@
             "Condition": "CreateNewBeanstalkEnv",
             "Description": "New Beanstalk Environment Endpoint URL",
             "Value": {
-              "Fn::Join":["",["http://",
-                {"Fn::GetAtt": [
-                    "BeanstalkSampleApplicationStack",
-                    "Outputs.BeanstalkEnvEndPointUrl"
+                "Fn::Join": [
+                    "",
+                    [
+                        "http://",
+                        {
+                            "Fn::GetAtt": [
+                                "BeanstalkSampleApplicationStack",
+                                "Outputs.BeanstalkEnvEndPointUrl"
+                            ]
+                        }
+                    ]
                 ]
-              }
-              ]
-            ]
             }
         },
         "CustomDomainNameCNAME": {

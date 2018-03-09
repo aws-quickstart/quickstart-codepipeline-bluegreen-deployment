@@ -1,0 +1,698 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CICD Pipeline setup for a cost efficient Elastic Beanstalk Blue-Green deployment.",
+    "Parameters": {
+        "AdministratorEmail": {
+            "AllowedPattern": "^[a-z0-9]+(\\.[_a-z0-9]+)*@[a-z0-9-]+(\\.[a-z0-9-]+)*(\\.[a-z]{2,15})$",
+            "ConstraintDescription": "Can contain only ASCII characters. This must be in the format of username@email.com",
+            "Description": "Provide an administrator email for Pipeline Manual Approval. SNS subscription Email will be sent to this address for the Manual Approval Stage. This is mandatory for the Manual approval Stage of the CodePipelinee",
+            "Type": "String"
+        },
+        "BeanstalkApplicationName": {
+            "Description": "Name of the Beanstalk Application where the Blue Environment exists",
+            "Type": "String"
+        },
+        "BeanstalkSourceStageBucket": {
+            "Description": "Name of the S3 bucket for the Pipeline Source Stage for ElasticBeanstalk",
+            "Type": "String"
+        },
+        "BeanstalkSourceStageBucketKey": {
+            "Description": "CodePipeline Source Stage Bucket key required for the ElasticBeanstalk deployment",
+            "Type": "String"
+        },
+        "BlueEnvironmentName": {
+            "Description": "Provide the Name of the Beanstalk Environment as Blue Environment.",
+            "Type": "String"
+        },
+        "CodePipelineArtifactStore": {
+            "Description": "CodePipeline Artifact S3 bucket",
+            "Type": "String"
+        },
+        "GreenEnvironmentName": {
+            "Description": "Name of the Green Environment that will be created as a Clone of the Blue Environment to temporarily route the traffic when the deployment is going on for the Blue Environment",
+            "Type": "String"
+        },
+        "LambdaZipsBucket": {
+            "Description": "Name of the S3 Bucket where the lambda assets are copied ",
+            "Type": "String"
+        },
+        "NameofthePipeline": {
+            "AllowedPattern": "[A-Za-z0-9.@\\-_]+",
+            "ConstraintDescription": "Can contain Only letters, numbers and certain special characters such as  . (period), @ (at sign), - (minus sign), and _ (underscore)",
+            "Default": "BlueGreenCICDPipeline",
+            "Description": "Name of the CICDPipeline used for Blue-Green Deployment",
+            "MaxLength": "100",
+            "MinLength": "1",
+            "Type": "String"
+        },
+        "QSS3KeyPrefix": {
+            "AllowedPattern": "^[0-9a-zA-Z-/]*$",
+            "ConstraintDescription": "Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "codepipeline-bluegreen-deployment/latest/",
+            "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "BlueGreenCICDPipeline": {
+            "Properties": {
+                "ArtifactStore": {
+                    "Location": {
+                        "Ref": "CodePipelineArtifactStore"
+                    },
+                    "Type": "S3"
+                },
+                "Name": {
+                    "Ref": "NameofthePipeline"
+                },
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "PipelineServiceRole",
+                        "Arn"
+                    ]
+                },
+                "Stages": [
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Source",
+                                    "Owner": "AWS",
+                                    "Provider": "S3",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "PollForSourceChanges": "true",
+                                    "S3Bucket": {
+                                        "Ref": "BeanstalkSourceStageBucket"
+                                    },
+                                    "S3ObjectKey": {
+                                        "Ref": "BeanstalkSourceStageBucketKey"
+                                    }
+                                },
+                                "Name": "SourceForElasticBeanstalk",
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": "ElasticBeanstalkPackage"
+                                    }
+                                ],
+                                "RunOrder": 1
+                            },
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Source",
+                                    "Owner": "AWS",
+                                    "Provider": "S3",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "PollForSourceChanges": "false",
+                                    "S3Bucket": {
+                                        "Ref": "LambdaZipsBucket"
+                                    },
+                                    "S3ObjectKey": {
+                                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/SwapEnvironments/swapenvironments.zip"
+                                    }
+                                },
+                                "Name": "SourceForCodeBuildStage",
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": "UrlSwapPackage"
+                                    }
+                                ],
+                                "RunOrder": 2
+                            },
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Source",
+                                    "Owner": "AWS",
+                                    "Provider": "S3",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "PollForSourceChanges": "false",
+                                    "S3Bucket": {
+                                        "Ref": "LambdaZipsBucket"
+                                    },
+                                    "S3ObjectKey": {
+                                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/TestBlueEnvironment/testBlueenvironment.zip"
+                                    }
+                                },
+                                "Name": "SourceForCodeBuildTestStage",
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": "BlueEnvTestPackage"
+                                    }
+                                ],
+                                "RunOrder": 2
+                            }
+                        ],
+                        "Name": "SourceForElasticBeanstalk"
+                    },
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Invoke",
+                                    "Owner": "AWS",
+                                    "Provider": "Lambda",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "FunctionName": {
+                                        "Ref": "CreateCloneLambdaFunction"
+                                    },
+                                    "UserParameters": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "{\"BlueEnvName\":\"",
+                                                {
+                                                    "Ref": "BlueEnvironmentName"
+                                                },
+                                                "\",\"GreenEnvName\":\"",
+                                                {
+                                                    "Ref": "GreenEnvironmentName"
+                                                },
+                                                "\",\"BlueCNAMEConfigBucket\":\"",
+                                                {
+                                                    "Ref": "LambdaZipsBucket"
+                                                },
+                                                "\",\"BeanstalkAppName\":\"",
+                                                {
+                                                    "Ref": "BeanstalkApplicationName"
+                                                },
+                                                "\",\"CreateConfigTempName\":\"BlueEnvConfig",
+                                                "\",\"BlueCNAMEConfigFile\":\"bluecnameconfig.json",
+                                                "\"}"
+                                            ]
+                                        ]
+                                    }
+                                },
+                                "Name": "LambdaFunctionForNewEnvCreation",
+                                "RunOrder": 1
+                            }
+                        ],
+                        "Name": "Lambda"
+                    },
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Approval",
+                                    "Owner": "AWS",
+                                    "Provider": "Manual",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "NotificationArn": {
+                                        "Ref": "ManualApprovalSNSTopic"
+                                    }
+                                },
+                                "InputArtifacts": [],
+                                "Name": "manualapp",
+                                "OutputArtifacts": [],
+                                "RunOrder": 1
+                            }
+                        ],
+                        "Name": "ManualApprovalForUrlSwap"
+                    },
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Test",
+                                    "Owner": "AWS",
+                                    "Provider": "CodeBuild",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "ProjectName": {
+                                        "Ref": "CodeBuildSwapServer"
+                                    }
+                                },
+                                "InputArtifacts": [
+                                    {
+                                        "Name": "UrlSwapPackage"
+                                    }
+                                ],
+                                "Name": "SwapUrlBeanstalk",
+                                "RunOrder": 1
+                            }
+                        ],
+                        "Name": "SwapUrlCodeBuild"
+                    },
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Deploy",
+                                    "Owner": "AWS",
+                                    "Provider": "ElasticBeanstalk",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "ApplicationName": {
+                                        "Ref": "BeanstalkApplicationName"
+                                    },
+                                    "EnvironmentName": {
+                                        "Ref": "BlueEnvironmentName"
+                                    }
+                                },
+                                "InputArtifacts": [
+                                    {
+                                        "Name": "ElasticBeanstalkPackage"
+                                    }
+                                ],
+                                "Name": "BeanstalkBlueDeploy",
+                                "RunOrder": 1
+                            }
+                        ],
+                        "Name": "DeploytoBlueEnvironment"
+                    },
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Test",
+                                    "Owner": "AWS",
+                                    "Provider": "CodeBuild",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "ProjectName": {
+                                        "Ref": "CodeBuildTestServer"
+                                    }
+                                },
+                                "InputArtifacts": [
+                                    {
+                                        "Name": "BlueEnvTestPackage"
+                                    }
+                                ],
+                                "Name": "BlueEnvTestBeanstalk",
+                                "RunOrder": 1
+                            }
+                        ],
+                        "Name": "BlueEnvTestCodeBuild"
+                    },
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Invoke",
+                                    "Owner": "AWS",
+                                    "Provider": "Lambda",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "FunctionName": {
+                                        "Ref": "TerminateGreenEnvLambdaFunction"
+                                    },
+                                    "UserParameters": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "{\"BlueEnvName\":\"",
+                                                {
+                                                    "Ref": "BlueEnvironmentName"
+                                                },
+                                                "\",\"GreenEnvName\":\"",
+                                                {
+                                                    "Ref": "GreenEnvironmentName"
+                                                },
+                                                "\",\"BlueCNAMEConfigBucket\":\"",
+                                                {
+                                                    "Ref": "LambdaZipsBucket"
+                                                },
+                                                "\",\"BeanstalkAppName\":\"",
+                                                {
+                                                    "Ref": "BeanstalkApplicationName"
+                                                },
+                                                "\",\"CreateConfigTempName\":\"BlueEnvConfig",
+                                                "\",\"BlueCNAMEConfigFile\":\"bluecnameconfig.json",
+                                                "\"}"
+                                            ]
+                                        ]
+                                    }
+                                },
+                                "Name": "ReswapAndCleanUpGreenEnv",
+                                "RunOrder": 1
+                            }
+                        ],
+                        "Name": "ReswapAndCleanUpGreenEnv"
+                    }
+                ]
+            },
+            "Type": "AWS::CodePipeline::Pipeline"
+        },
+        "BuildServiceRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "codebuild.amazonaws.com"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "*"
+                                    ],
+                                    "Sid": "CloudWatchLogsPolicy"
+                                },
+                                {
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:ListObjects",
+                                        "s3:GetObjectVersion"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "*"
+                                    ],
+                                    "Sid": "S3GetObjectPolicy"
+                                },
+                                {
+                                    "Action": [
+                                        "s3:PutObject"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "*"
+                                    ],
+                                    "Sid": "S3PutObjectPolicy"
+                                },
+                                {
+                                    "Action": [
+                                        "elasticbeanstalk:SwapEnvironmentCNAMEs",
+                                        "elasticbeanstalk:Describe*",
+                                        "cloudformation:GetTemplate"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "*"
+                                    ],
+                                    "Sid": "EBAccess"
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "codebuildpolicy"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "CodeBuildSwapServer": {
+            "Properties": {
+                "Artifacts": {
+                    "Type": "CODEPIPELINE"
+                },
+                "Description": "CodeBuild Server to swap the urls between the Blue and Green Environments ",
+                "Environment": {
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "BlueEnvName",
+                            "Value": {
+                                "Ref": "BlueEnvironmentName"
+                            }
+                        },
+                        {
+                            "Name": "GreenEnvName",
+                            "Value": {
+                                "Ref": "GreenEnvironmentName"
+                            }
+                        },
+                        {
+                            "Name": "BlueCNAMEConfigBucket",
+                            "Value": {
+                                "Ref": "LambdaZipsBucket"
+                            }
+                        },
+                        {
+                            "Name": "BlueCNAMEConfigFile",
+                            "Value": "bluecnameconfig.json"
+                        }
+                    ],
+                    "Image": "aws/codebuild/ubuntu-base:14.04",
+                    "Type": "LINUX_CONTAINER"
+                },
+                "Name": "CICDurlSwap",
+                "ServiceRole": {
+                    "Fn::GetAtt": [
+                        "BuildServiceRole",
+                        "Arn"
+                    ]
+                },
+                "Source": {
+                    "Type": "CODEPIPELINE"
+                },
+                "TimeoutInMinutes": 60
+            },
+            "Type": "AWS::CodeBuild::Project"
+        },
+        "CodeBuildTestServer": {
+            "Properties": {
+                "Artifacts": {
+                    "Type": "CODEPIPELINE"
+                },
+                "Description": "CodeBuild Test Server for the Blue Environment after new deployment",
+                "Environment": {
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "BlueEnvName",
+                            "Value": {
+                                "Ref": "BlueEnvironmentName"
+                            }
+                        },
+                        {
+                            "Name": "GreenEnvName",
+                            "Value": {
+                                "Ref": "GreenEnvironmentName"
+                            }
+                        },
+                        {
+                            "Name": "BlueCNAMEConfigFile",
+                            "Value": "bluecnameconfig.json"
+                        }
+                    ],
+                    "Image": "aws/codebuild/ubuntu-base:14.04",
+                    "Type": "LINUX_CONTAINER"
+                },
+                "Name": "CICDBlueDeploymentTest",
+                "ServiceRole": {
+                    "Fn::GetAtt": [
+                        "BuildServiceRole",
+                        "Arn"
+                    ]
+                },
+                "Source": {
+                    "Type": "CODEPIPELINE"
+                },
+                "TimeoutInMinutes": 60
+            },
+            "Type": "AWS::CodeBuild::Project"
+        },
+        "CreateCloneLambdaFunction": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "LambdaZipsBucket"
+                    },
+                    "S3Key": {
+                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/CreateEnvironment/creategreenenv.zip"
+                    }
+                },
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python3.6",
+                "Timeout": 300
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "LambdaExecutionRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/AWSElasticBeanstalkFullAccess"
+                ],
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "codepipeline:PutJobSuccessResult",
+                                        "codepipeline:PutJobFailureResult"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "CodePipelinePutSuccessFailurePolicy"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "ManualApprovalSNSTopic": {
+            "Properties": {
+                "Subscription": [
+                    {
+                        "Endpoint": {
+                            "Ref": "AdministratorEmail"
+                        },
+                        "Protocol": "email"
+                    }
+                ]
+            },
+            "Type": "AWS::SNS::Topic"
+        },
+        "PipelineServiceRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "codepipeline.amazonaws.com"
+                            },
+                            "Sid": ""
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "s3:GetObject",
+                                        "s3:GetObjectVersion",
+                                        "s3:GetBucketVersioning"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Action": [
+                                        "s3:PutObject"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "arn:aws:s3:::codepipeline*",
+                                        "arn:aws:s3:::elasticbeanstalk*"
+                                    ]
+                                },
+                                {
+                                    "Action": [
+                                        "elasticbeanstalk:*",
+                                        "ec2:*",
+                                        "elasticloadbalancing:*",
+                                        "autoscaling:*",
+                                        "cloudwatch:*",
+                                        "s3:*",
+                                        "sns:*",
+                                        "cloudformation:*",
+                                        "rds:*",
+                                        "sqs:*",
+                                        "ecs:*",
+                                        "iam:PassRole"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Action": [
+                                        "lambda:InvokeFunction",
+                                        "lambda:ListFunctions"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Action": [
+                                        "codebuild:BatchGetBuilds",
+                                        "codebuild:StartBuild"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "codepipelinepolicy"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "TerminateGreenEnvLambdaFunction": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "LambdaZipsBucket"
+                    },
+                    "S3Key": {
+                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/TerminateandReSwap/terminategreenenv.zip"
+                    }
+                },
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python3.6",
+                "Timeout": 300
+            },
+            "Type": "AWS::Lambda::Function"
+        }
+    }
+}
