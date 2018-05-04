@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "CICD Pipeline setup for a cost efficient Elastic Beanstalk Blue-Green deployment.",
+    "Description": "CICD Pipeline setup for a cost efficient Elastic Beanstalk Blue-Green deployment (qs-1odpn28j4).",
     "Metadata": {
         "AWS::CloudFormation::Interface": {
             "ParameterGroups": [
