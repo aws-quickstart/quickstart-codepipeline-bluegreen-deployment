@@ -189,12 +189,12 @@
         },
         "AllowedIps": {
             "Default": "131.103.20.160/27,165.254.145.0/26,104.192.143.0/24",
-            "Description": "(Optional)  This applies only to the gitpull method. This is a comma-separated list of IP CIDR blocks for source IP authentication. Bitbucket Cloud IP ranges are provided as defaults. Provide this value only when the GitToS3integration parameter is set to true.",
+            "Description": "(Optional) This applies only to the gitpull method. This is a comma-separated list of IP CIDR blocks for source IP authentication. Bitbucket Cloud IP ranges are provided as defaults. Provide this value only when the GitToS3integration parameter is set to true.",
             "Type": "String"
         },
         "ApiSecret": {
             "Default": "",
-            "Description": "OPTIONAL: gitpull method only. WebHook Secrets for use with GitHub Enterprise and GitLab. If a secret is matched IP range authentication is bypassed. Cannot contain: , \\ \"Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Description": "(Optional) This applies only to the gitpull method. WebHook Secrets for use with GitHub Enterprise and GitLab. If a secret is matched IP range authentication is bypassed. Cannot contain: , \ "Provide this value only when the GitToS3integration parameter is set to true.",
             "NoEcho": "true",
             "Type": "String"
         },
@@ -213,7 +213,7 @@ If the GitToS3integration parameter value is set to true, a new bucket will be c
         },
         "CustomDomainName": {
             "Default": "",
-            "Description": "OPTIONAL:Use a custom domain name for the webhook endpoint, if left blank API Gateway will create a domain name for you. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Description": "(Optional) Use a custom domain name for the webhook endpoint. If left blank, API Gateway will create a domain name for you. Provide this value only when the GitToS3integration parameter is set to true.",
             "Type": "String"
         },
         "ExistingBeanstalkApplicationName": {
@@ -232,26 +232,26 @@ If the GitToS3integration parameter value is set to true, a new bucket will be c
                 "false"
             ],
             "Default": "false",
-            "Description": "Select 'true' if you want to have Git to S3 integration setup. If not leave it as default 'false'. This will allow you to use an existing Git repository to use with the Application deployment to Elastic Beanstalk",
+            "Description": "Select true if you want to set up Git to S3 integration. If not, leave the default value as false. This will allow you to use an existing Git repository when deploying an application to Elastic Beanstalk.",
             "Type": "String"
         },
         "GitToken": {
             "ConstraintDescription": "this token must be generated from the git server/provider",
             "Default": "",
-            "Description": "OPTIONAL:zipdl method only. Personal access token, needed for GitHub Enterprise and GitLab. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Description": "(Optional) This applies to the zipdl method only. Personal access token, needed for GitHub Enterprise and GitLab. Provide this value only when the GitToS3integration parameter is set to true.",
             "NoEcho": "true",
             "Type": "String"
         },
         "GreenEnvironmentName": {
             "Default": "GreenEnvironment",
-            "Description": "Provide a Name for the Green Environment, which will be the clone of the Blue Environment where the traffic will be routed temporarily for the amount of time the Blue Environment is completed with the deployment and tested. After the successful deployment to Blue Environment, the traffic will be routed back to Blue and the Green Environment will be terminated",
+            "Description": "The name of the green environment, which will be the clone of the blue environment. Traffic will be routed temporarily to the green environment, until the blue environment is finished with the deployment and testing. After successful deployment to the blue environment, traffic will be routed back to the blue environment, and the green environment will be terminated.",
             "Type": "String"
         },
         "NameofthePipeline": {
             "AllowedPattern": "[A-Za-z0-9.@\\-_]+",
             "ConstraintDescription": "Can contain Only letters, numbers and certain special characters such as . (period), @ (at sign), - (hyphen), and _ (underscore)",
             "Default": "BlueGreenCICDPipeline",
-            "Description": "Name of the CICDPipeline.",
+            "Description": "The name of the CI/CD pipeline used in the blue-green deployment.",
             "MaxLength": "100",
             "MinLength": "1",
             "Type": "String"
@@ -259,13 +259,13 @@ If the GitToS3integration parameter value is set to true, a new bucket will be c
         "OauthKey": {
             "ConstraintDescription": "this key must be generated from the git server/provider",
             "Default": "",
-            "Description": "OPTIONAL: zipdl method only. OAuth2 Key needed for BitBucket. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Description": "(Optional) This applies to the zipdl method only. The OAuth2 Key needed for Bitbucket. Provide this value only when the GitToS3integration parameter is set to true.",
             "Type": "String"
         },
         "OauthSecret": {
             "ConstraintDescription": "this secret must be generated from the git server/provider",
             "Default": "",
-            "Description": "OPTIONAL:zipdl method only. OAuth2 Secret needed for BitBucket.Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Description": "(Optional) This applies to the zipdl method only. The OAuth2 Secret needed for Bitbucket. Provide this value only when the GitToS3integration parameter is set to true.",
             "NoEcho": "true",
             "Type": "String"
         },
