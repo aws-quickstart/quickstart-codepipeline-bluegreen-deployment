@@ -194,7 +194,7 @@
         },
         "ApiSecret": {
             "Default": "",
-            "Description": "(Optional) This applies only to the gitpull method. WebHook Secrets for use with GitHub Enterprise and GitLab. If a secret is matched IP range authentication is bypassed. Cannot contain: , \ "Provide this value only when the GitToS3integration parameter is set to true.",
+            "Description": "(Optional) This applies only to the gitpull method. WebHook Secrets for use with GitHub Enterprise and GitLab. If a secret is matched IP range authentication is bypassed. Cannot contain: comma, backward slash (\), and double quotes. Provide this value only when the GitToS3integration parameter is set to true.",
             "NoEcho": "true",
             "Type": "String"
         },
