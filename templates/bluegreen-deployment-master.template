@@ -205,8 +205,7 @@
         },
         "BeanstalkSourceStageS3BucketName": {
             "Default": "",
-            "Description": "(Optional) The S3 bucket for the source stage of the pipeline that AWS CodePipeline uses to pull the application package. If the GitToS3integration parameter value is set to false and if this value is left blank, a bucket will be created. If a bucket name is provided, that will be the bucket CodePipeline will look in to get the application source package. If the GitToS3integration parameter value is set to true, a new bucket will be created with this name to put the source package (zip file). If left blank, a bucket name will be automatically generated. Provide this value only when the GitToS3integration parameter is set to true.
-",
+            "Description": "(Optional) The S3 bucket for the source stage of the pipeline that AWS CodePipeline uses to pull the application package. If the GitToS3integration parameter value is set to false and if this value is left blank, a bucket will be created. If a bucket name is provided, that will be the bucket CodePipeline will look in to get the application source package. If the GitToS3integration parameter value is set to true, a new bucket will be created with this name to put the source package (zip file). If left blank, a bucket name will be automatically generated. Provide this value only when the GitToS3integration parameter is set to true.",
             "Type": "String"
         },
         "CustomDomainName": {
