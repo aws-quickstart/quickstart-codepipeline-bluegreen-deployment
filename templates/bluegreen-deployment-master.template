@@ -174,7 +174,7 @@
             "php": {
                 "NewBlueEnvironmentName": "BlueEnvironment",
                 "NewBeanstalkApplicationName": "BlueGreenBeanstalkApplication",
-                "SolutionStackForNewBeanstalkEnv": "64bit Amazon Linux 2017.09 v2.6.5 running PHP 7.1",
+                "SolutionStackForNewBeanstalkEnv": "64bit Amazon Linux 2017.09 v2.6.6 running PHP 7.1",
                 "AppPackageS3Bucket": "elasticbeanstalk-samples",
                 "AppPackageS3key": "php-sample.zip"
             }
