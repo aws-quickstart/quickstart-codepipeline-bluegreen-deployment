@@ -72,10 +72,13 @@
                     "default": "Existing Beanstalk Application Name"
                 },
                 "ExistingBlueEnvironmentName": {
-                    "default": "Existing Blue Environmemt Name"
+                    "default": "Existing Blue Environment Name"
                 },
                 "GitToken": {
                     "default": "Git Personal Access Token"
+                },
+                "GitToS3integration": {
+                    "default": "Git to S3 integration"
                 },
                 "GreenEnvironmentName": {
                     "default": "Green Environment Name"
@@ -181,12 +184,12 @@
         "AdministratorEmail": {
             "AllowedPattern": "^[a-z0-9]+(\\.[_a-z0-9]+)*@[a-z0-9-]+(\\.[a-z0-9-]+)*(\\.[a-z]{2,15})$",
             "ConstraintDescription": "Can contain only ASCII characters. This must be in the format of something@email.com",
-            "Description": "Provide an administrator email address for Manual Approval stage in the pipeline. SNS subscription email will be sent to this address.",
+            "Description": "The administrator email address for the manual approval stage in the pipeline. The Amazon SNS subscription email will be sent to this address.",
             "Type": "String"
         },
         "AllowedIps": {
             "Default": "131.103.20.160/27,165.254.145.0/26,104.192.143.0/24",
-            "Description": "OPTIONAL: gitpull method only. Comma seperated list of IP CIDR blocks for source IP authentication. The BitBucket Cloud IP ranges are provided as defaults. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Description": "(Optional)  This applies only to the gitpull method. This is a comma-separated list of IP CIDR blocks for source IP authentication. Bitbucket Cloud IP ranges are provided as defaults. Provide this value only when the GitToS3integration parameter is set to true.",
             "Type": "String"
         },
         "ApiSecret": {
@@ -197,12 +200,15 @@
         },
         "BeanstalkSourceStageS3BucketKey": {
             "Default": "",
-            "Description": "Path to the Beanstalk application source package (in .zip format) that will trigger CodePipeline Source Stage. If the 'GitToS3Integration' parameter is set to 'true', this parameter is the S3 Bucket key where the zip file will be placed by the Git Webhooks and fed as an input to the Pipeline Source Stage. The key should be in the format: 'git-user/git-repository/git-user_git-repository.zip'. This value differs from one Git repo to another. You may refer the https://s3.amazonaws.com/aws-quickstart/git2s3/latest/doc/git-to-amazon-s3-using-webhooks.pdf documentation 'Deployment Steps' section for more information",
+            "Description": "(Optional) The path to the Elastic Beanstalk application source package (in .zip format) that will trigger the source stage in the pipeline. If the GitToS3integration parameter is set to true, this parameter is the S3 bucket key where the Git webhook will place the zip file as input to the source stage in the pipeline. The key should be in the format git-user/git-repository/git-user_git-repository.zip. This value differs from one Git repo to another. For more information, see the deployment steps in the Git Webhooks with AWS Services Quick Start deployment guide.",
             "Type": "String"
         },
         "BeanstalkSourceStageS3BucketName": {
             "Default": "",
-            "Description": "(OPTIONAL) An existing S3 bucket for the source stage of the CodePipeline. If left blank, a bucket will be created. In case of Git2S3GitToS3integration parameter value set to 'true', a new bucket will be created with this name to put the source package (zip file). If left blank, a bucket name will be automatically generated. Provide this value only when the 'GitToS3integration' parameter is set to true",
+            "Description": "(Optional) The S3 bucket for the source stage of the pipeline that AWS CodePipeline uses to pull the application package.
+If the GitToS3integration parameter value is set to false and if this value is left blank, a bucket will be created. If a bucket name is provided, that will be the bucket CodePipeline will look in to get the application source package.
+If the GitToS3integration parameter value is set to true, a new bucket will be created with this name to put the source package (zip file). If left blank, a bucket name will be automatically generated. Provide this value only when the GitToS3integration parameter is set to true.
+",
             "Type": "String"
         },
         "CustomDomainName": {
@@ -212,12 +218,12 @@
         },
         "ExistingBeanstalkApplicationName": {
             "Default": "",
-            "Description": "OPTIONAL: Required if the parameter 'Existing Blue Environment Name' is provided. Give the Name of the Existing Beantalk Application where the existing Beanstalk Environment is running. Leaving this blank will create a new sample Application. You must provide a value to this Parameter if you provide the value for 'Existing Blue Environment Name'",
+            "Description": "(Optional) Required if the parameter ExistingBlueEnvironmentName is provided. Give the name of the existing Elastic Beanstalk application where the existing Elastic Beanstalk environment is running. Leaving this value blank creates a new sample application. You must provide a value for this parameter if you provide a value for ExistingBlueEnvironmentName.",
             "Type": "String"
         },
         "ExistingBlueEnvironmentName": {
             "Default": "",
-            "Description": "OPTIONAL: Name of the Existing Beanstalk Environment as Blue Environment. Leave it blank if you want to create a new sample Environment with 'php' solution stack. Provide a value to this parameter for which you would like to utilize the cost efficient Blue-Green deployments by creating a temporary cloned environment for routing the live traffic when this environment is in the Deployment/Test lifecycle",
+            "Description": "(Optional) The name of the Elastic Beanstalk environment that’s designated as the blue environment. Leave this value blank, if you want to create a new sample environment with the PHP solution stack. Otherwise, provide a value to use for blue-green deployment.",
             "Type": "String"
         },
         "GitToS3integration": {
