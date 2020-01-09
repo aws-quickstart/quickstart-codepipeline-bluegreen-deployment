@@ -72,7 +72,7 @@ def CreateConfigTemplateBlue(AppName,BlueEnvId,TempName):
     ListTemplates = beanstalkclient.describe_applications(ApplicationNames=[AppName])['Applications'][0]['ConfigurationTemplates']
     count = 0
     while count < len(ListTemplates):
-        print (ListTemplates[count])
+        print((ListTemplates[count]))
         if ListTemplates[count] == TempName:
             print ("ConfigTempAlreadyExists")
             return TempName
@@ -100,7 +100,7 @@ def CreateGreenEnvironment(EnvName,ConfigTemplate,AppVersion,AppName):
     if not(GetEnvData['Environments']==[]):
         print("Environment Exists")
         if not(GetEnvData['Environments'][0]['Status']) in InvalidStatus:
-            print("Existing Environment with the name %s not in Invalid Status" % EnvName)
+            print(("Existing Environment with the name %s not in Invalid Status" % EnvName))
             return (GetEnvData['Environments'][0]['EnvironmentId'])
     print ("Creating a new Environment")
     response = beanstalkclient.create_environment(
