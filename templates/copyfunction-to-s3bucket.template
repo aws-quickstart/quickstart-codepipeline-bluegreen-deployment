@@ -1,499 +1,358 @@
-{
-    "AWSTemplateFormatVersion": "2010-09-09",
-    "Description": "Copy Function template that creates the Asset bucket for Lambda and uploads the code.",
-    "Conditions": {
-        "CreateBucketForBeanstalkSource": {
-            "Fn::And": [
-                {
-                    "Fn::Equals": [
-                        {
-                            "Ref": "BeanstalkSourceStageS3BucketName"
-                        },
-                        ""
-                    ]
-                },
-                {
-                    "Fn::Not": [
-                        {
-                            "Fn::Equals": [
-                                {
-                                    "Ref": "GitToS3integration"
-                                },
-                                "true"
-                            ]
-                        }
-                    ]
-                }
-            ]
-        }
-    },
-    "Parameters": {
-        "BeanstalkSourceStageS3BucketName": {
-            "Default": "",
-            "Description": "Provide the S3 bucket name where the application package can be uploaded/is uploaded for the CodePipeline Source Stage. If not provided, a bucket will be created. This can be ignored if Git2S3GitToS3integration parameter is set to 'true'",
-            "Type": "String"
-        },
-        "GitToS3integration": {
-            "AllowedValues": [
-                "true",
-                "false"
-            ],
-            "Default": "false",
-            "Description": "Select 'true' if you want to have GittoS3 integration setup. If not leave it as default 'false' ",
-            "Type": "String"
-        },
-        "QSS3BucketName": {
-            "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
-            "ConstraintDescription": "Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
-            "Default": "aws-quickstart",
-            "Description": "S3 bucket name for the Quick Start assets. Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
-            "Type": "String"
-        },
-        "QSS3KeyPrefix": {
-            "AllowedPattern": "^[0-9a-zA-Z-/]*$",
-            "ConstraintDescription": "Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
-            "Default": "quickstart-codepipeline-bluegreen-deployment/",
-            "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
-            "Type": "String"
-        }
-    },
-    "Resources": {
-        "BeanstalkSourceBucket": {
-            "Condition": "CreateBucketForBeanstalkSource",
-            "Properties": {
-                "Tags": [],
-                "VersioningConfiguration": {
-                    "Status": "Enabled"
-                }
-            },
-            "Type": "AWS::S3::Bucket"
-        },
-        "CodePipelineArtifactStore": {
-            "Properties": {
-                "Tags": []
-            },
-            "Type": "AWS::S3::Bucket"
-        },
-        "CodePipelineArtifactStoreCleanUp": {
-            "Properties": {
-                "DestBucket": {
-                    "Ref": "CodePipelineArtifactStore"
-                },
-                "ServiceToken": {
-                    "Fn::GetAtt": [
-                        "S3CleanUpFunction",
-                        "Arn"
-                    ]
-                }
-            },
-            "Type": "AWS::CloudFormation::CustomResource"
-        },
-        "CopyZips": {
-            "Properties": {
-                "DestBucket": {
-                    "Ref": "LambdaZipsBucket"
-                },
-                "Objects": [
-                    "functions/packages/CreateEnvironment/creategreenenv.zip",
-                    "functions/packages/SwapEnvironments/swapenvironments.zip",
-                    "functions/packages/TestBlueEnvironment/testBlueenvironment.zip",
-                    "functions/packages/TerminateandReSwap/terminategreenenv.zip"
-                ],
-                "Prefix": {
-                    "Ref": "QSS3KeyPrefix"
-                },
-                "ServiceToken": {
-                    "Fn::GetAtt": [
-                        "CopyZipsFunction",
-                        "Arn"
-                    ]
-                },
-                "SourceBucket": {
-                    "Ref": "QSS3BucketName"
-                }
-            },
-            "Type": "AWS::CloudFormation::CustomResource"
-        },
-        "CopyZipsFunction": {
-            "Properties": {
-                "Code": {
-                    "ZipFile": {
-                        "Fn::Join": [
-                            "\n",
-                            [
-                                "import json",
-                                "import logging",
-                                "import threading",
-                                "import boto3",
-                                "import cfnresponse",
-                                "",
-                                "",
-                                "def copy_objects(source_bucket, dest_bucket, prefix, objects):",
-                                "    s3 = boto3.client('s3')",
-                                "    for o in objects:",
-                                "        key = prefix + o",
-                                "        copy_source = {",
-                                "            'Bucket': source_bucket,",
-                                "            'Key': key",
-                                "        }",
-                                "        s3.copy_object(CopySource=copy_source, Bucket=dest_bucket, Key=key)",
-                                "",
-                                "",
-                                "def delete_objects(bucket):",
-                                "    client = boto3.client('s3')",
-                                "    print(\"Collecting data from\" + bucket)",
-                                "    paginator = client.get_paginator('list_object_versions')",
-                                "    result = paginator.paginate(Bucket=bucket)",
-                                "    objects = []",
-                                "    for page in result:",
-                                "        try:",
-                                "            for k in page['Versions']:",
-                                "                objects.append({'Key':k['Key'],'VersionId': k['VersionId']})",
-                                "            try:",
-                                "                for k in page['DeleteMarkers']:",
-                                "                    version = k['VersionId']",
-                                "                    key = k['Key']",
-                                "                    objects.append({'Key': key,'VersionId': version})",
-                                "            except:",
-                                "                pass",
-                                "            print(\"deleting objects\")",
-                                "            client.delete_objects(Bucket=bucket,     Delete={'Objects': objects})",
-                                "           # objects = []",
-                                "        except:",
-                                "            pass",
-                                "    print(\"bucket already empty\")",
-                                "",
-                                "",
-                                "",
-                                "def timeout(event, context):",
-                                "    logging.error('Execution is about to time out, sending failure response to CloudFormation')",
-                                "    cfnresponse.send(event, context, cfnresponse.FAILED, {}, None)",
-                                "",
-                                "",
-                                "def handler(event, context):",
-                                "    # make sure we send a failure to CloudFormation if the function is going to timeout",
-                                "    timer = threading.Timer((context.get_remaining_time_in_millis() / 1000.00) - 0.5, timeout, args=[event, context])",
-                                "    timer.start()",
-                                "",
-                                "    print('Received event: %s' % json.dumps(event))",
-                                "    status = cfnresponse.SUCCESS",
-                                "    try:",
-                                "        source_bucket = event['ResourceProperties']['SourceBucket']",
-                                "        dest_bucket = event['ResourceProperties']['DestBucket']",
-                                "        prefix = event['ResourceProperties']['Prefix']",
-                                "        objects = event['ResourceProperties']['Objects']",
-                                "        if event['RequestType'] == 'Delete':",
-                                "            delete_objects(dest_bucket)",
-                                "        else:",
-                                "            copy_objects(source_bucket, dest_bucket, prefix, objects)",
-                                "    except Exception as e:",
-                                "        logging.error('Exception: %s' % e, exc_info=True)",
-                                "        status = cfnresponse.FAILED",
-                                "    finally:",
-                                "        timer.cancel()",
-                                "        cfnresponse.send(event, context, status, {}, None)",
-                                ""
-                            ]
-                        ]
-                    }
-                },
-                "Description": "Copies objects from a source S3 bucket to a destination",
-                "Handler": "index.handler",
-                "Role": {
-                    "Fn::GetAtt": [
-                        "CopyZipsRole",
-                        "Arn"
-                    ]
-                },
-                "Runtime": "python2.7",
-                "Timeout": 240
-            },
-            "Type": "AWS::Lambda::Function"
-        },
-        "CopyZipsRole": {
-            "Properties": {
-                "AssumeRolePolicyDocument": {
-                    "Statement": [
-                        {
-                            "Action": "sts:AssumeRole",
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Service": "lambda.amazonaws.com"
-                            }
-                        }
-                    ],
-                    "Version": "2012-10-17"
-                },
-                "ManagedPolicyArns": [
-                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-                ],
-                "Path": "/",
-                "Policies": [
-                    {
-                        "PolicyDocument": {
-                            "Statement": [
-                                {
-                                    "Action": [
-                                        "s3:GetObject"
-                                    ],
-                                    "Effect": "Allow",
-                                    "Resource": [
-                                        {
-                                            "Fn::Sub": "arn:aws:s3:::${QSS3BucketName}/${QSS3KeyPrefix}*"
-                                        }
-                                    ]
-                                },
-                                {
-                                    "Action": [
-                                        "s3:PutObject",
-                                        "s3:DeleteObject",
-                                        "s3:GetObject",
-                                        "s3:ListBucket",
-                                        "s3:ListBucketVersions",
-                                        "s3:DeleteObjectVersion",
-                                        "s3:GetObjectVersion",
-                                        "s3:GetBucketVersioning"
-                                    ],
-                                    "Effect": "Allow",
-                                    "Resource": [
-                                        {
-                                            "Fn::Sub": "arn:aws:s3:::${LambdaZipsBucket}/${QSS3KeyPrefix}*"
-                                        },
-                                        {
-                                            "Fn::Sub": "arn:aws:s3:::${LambdaZipsBucket}"
-                                        }
-                                    ]
-                                }
-                            ],
-                            "Version": "2012-10-17"
-                        },
-                        "PolicyName": "lambda-copier"
-                    }
-                ]
-            },
-            "Type": "AWS::IAM::Role"
-        },
-        "EmptyBeanstalkSourceBucketCleanup": {
-            "Condition": "CreateBucketForBeanstalkSource",
-            "Properties": {
-                "DestBucket": {
-                    "Ref": "BeanstalkSourceBucket"
-                },
-                "ServiceToken": {
-                    "Fn::GetAtt": [
-                        "S3CleanUpFunction",
-                        "Arn"
-                    ]
-                }
-            },
-            "Type": "AWS::CloudFormation::CustomResource"
-        },
-        "LambdaZipsBucket": {
-            "Properties": {
-                "Tags": [],
-                "VersioningConfiguration": {
-                    "Status": "Enabled"
-                }
-            },
-            "Type": "AWS::S3::Bucket"
-        },
-        "S3CleanUpFunction": {
-            "Properties": {
-                "Code": {
-                    "ZipFile": {
-                        "Fn::Join": [
-                            "\n",
-                            [
-                                "import json",
-                                "import logging",
-                                "import threading",
-                                "import boto3",
-                                "import cfnresponse",
-                                "client = boto3.client('s3')",
-                                "",
-                                "",
-                                "def delete_NonVersionedobjects(bucket):",
-                                "    print(\"Collecting data from\" + bucket)",
-                                "    paginator =     client.get_paginator('list_objects_v2')",
-                                "    result = paginator.paginate(Bucket=bucket)",
-                                "    objects = []",
-                                "    for page in result:",
-                                "        try:",
-                                "            for k in page['Contents']:",
-                                "                objects.append({'Key': k['Key']})",
-                                "                print(\"deleting objects\")",
-                                "                client.delete_objects(Bucket=bucket, Delete={'Objects': objects})",
-                                "                objects = []",
-                                "        except:",
-                                "            pass",
-                                "            print(\"bucket is already empty\")",
-                                "",
-                                "def delete_versionedobjects(bucket):",
-                                "    print(\"Collecting data from\" + bucket)",
-                                "    paginator = client.get_paginator('list_object_versions')",
-                                "    result = paginator.paginate(Bucket=bucket)",
-                                "    objects = []",
-                                "    for page in result:",
-                                "        try:",
-                                "            for k in page['Versions']:",
-                                "                objects.append({'Key':k['Key'],'VersionId': k['VersionId']})",
-                                "            try:",
-                                "                for k in page['DeleteMarkers']:",
-                                "                    version = k['VersionId']",
-                                "                    key = k['Key']",
-                                "                    objects.append({'Key': key,'VersionId': version})",
-                                "            except:",
-                                "                pass",
-                                "            print(\"deleting objects\")",
-                                "            client.delete_objects(Bucket=bucket, Delete={'Objects': objects})",
-                                "           # objects = []",
-                                "        except:",
-                                "            pass",
-                                "    print(\"bucket already empty\")",
-                                "",
-                                "",
-                                "",
-                                "def timeout(event, context):",
-                                "    logging.error('Execution is about to time out, sending failure response to CloudFormation')",
-                                "    cfnresponse.send(event, context, cfnresponse.FAILED, {}, None)",
-                                "",
-                                "",
-                                "def handler(event, context):",
-                                "    # make sure we send a failure to CloudFormation if the function is going to timeout",
-                                "    timer = threading.Timer((context.get_remaining_time_in_millis() / 1000.00) - 0.5, timeout, args=[event, context])",
-                                "    timer.start()",
-                                "",
-                                "    print('Received event: %s' % json.dumps(event))",
-                                "    status = cfnresponse.SUCCESS",
-                                "    try:",
-                                "        dest_bucket = event['ResourceProperties']['DestBucket']",
-                                "        if event['RequestType'] == 'Delete':",
-                                "            CheckifVersioned = client.get_bucket_versioning(Bucket=dest_bucket)",
-                                "            print CheckifVersioned",
-                                "            if 'Status' in CheckifVersioned:",
-                                "                print CheckifVersioned['Status']",
-                                "                print (\"This is a versioned Bucket\")",
-                                "                delete_versionedobjects(dest_bucket)",
-                                "            else:",
-                                "                print \"This is not a versioned bucket\"",
-                                "                delete_NonVersionedobjects(dest_bucket)",
-                                "        else:",
-                                "            print(\"Nothing to do\")",
-                                "    except Exception as e:",
-                                "        logging.error('Exception: %s' % e, exc_info=True)",
-                                "        status = cfnresponse.FAILED",
-                                "    finally:",
-                                "        timer.cancel()",
-                                "        cfnresponse.send(event, context, status, {}, None)",
-                                ""
-                            ]
-                        ]
-                    }
-                },
-                "Description": "Empty the S3 Buckets while deleting the Stack",
-                "Handler": "index.handler",
-                "Role": {
-                    "Fn::GetAtt": [
-                        "S3CleanUpRole",
-                        "Arn"
-                    ]
-                },
-                "Runtime": "python2.7",
-                "Timeout": 240
-            },
-            "Type": "AWS::Lambda::Function"
-        },
-        "S3CleanUpRole": {
-            "Properties": {
-                "AssumeRolePolicyDocument": {
-                    "Statement": [
-                        {
-                            "Action": "sts:AssumeRole",
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Service": "lambda.amazonaws.com"
-                            }
-                        }
-                    ],
-                    "Version": "2012-10-17"
-                },
-                "ManagedPolicyArns": [
-                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-                ],
-                "Path": "/",
-                "Policies": [
-                    {
-                        "PolicyDocument": {
-                            "Statement": [
-                                {
-                                    "Action": [
-                                        "s3:PutObject",
-                                        "s3:DeleteObject",
-                                        "s3:GetObject",
-                                        "s3:ListBucket",
-                                        "s3:ListBucketVersions",
-                                        "s3:DeleteObjectVersion",
-                                        "s3:GetObjectVersion",
-                                        "s3:GetBucketVersioning"
-                                    ],
-                                    "Effect": "Allow",
-                                    "Resource": {
-                                        "Fn::If": [
-                                            "CreateBucketForBeanstalkSource",
-                                            [
-                                                {
-                                                    "Fn::Sub": "arn:aws:s3:::${CodePipelineArtifactStore}/*"
-                                                },
-                                                {
-                                                    "Fn::Sub": "arn:aws:s3:::${CodePipelineArtifactStore}"
-                                                },
-                                                {
-                                                    "Fn::Sub": "arn:aws:s3:::${BeanstalkSourceBucket}/*"
-                                                },
-                                                {
-                                                    "Fn::Sub": "arn:aws:s3:::${BeanstalkSourceBucket}"
-                                                }
-                                            ],
-                                            [
-                                                {
-                                                    "Fn::Sub": "arn:aws:s3:::${CodePipelineArtifactStore}/*"
-                                                },
-                                                {
-                                                    "Fn::Sub": "arn:aws:s3:::*"
-                                                }
-                                            ]
-                                        ]
-                                    }
-                                }
-                            ],
-                            "Version": "2012-10-17"
-                        },
-                        "PolicyName": "lambda-copier"
-                    }
-                ]
-            },
-            "Type": "AWS::IAM::Role"
-        }
-    },
-    "Outputs": {
-        "BeanstalkSourceBucket": {
-            "Condition": "CreateBucketForBeanstalkSource",
-            "Description": "S3 Bucket for the CodePipeline Source Stage for Beanstalk",
-            "Value": {
-                "Ref": "BeanstalkSourceBucket"
-            }
-        },
-        "CodePipelineArtifactStore": {
-            "Description": "S3 Bucket for the CodePipeline Artifcat",
-            "Value": {
-                "Ref": "CodePipelineArtifactStore"
-            }
-        },
-        "LambdaZipsBucket": {
-            "Description": "S3 Bucket for the Lambda Function Code",
-            "Value": {
-                "Ref": "LambdaZipsBucket"
-            }
-        }
-    }
-}
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Copy Function template that creates the Asset bucket for Lambda and uploads
+  the code.
+Conditions:
+  CreateBucketForBeanstalkSource: !And
+    - !Equals
+      - !Ref 'BeanstalkSourceStageS3BucketName'
+      - ''
+    - !Not
+      - !Equals
+        - !Ref 'GitToS3integration'
+        - 'true'
+Parameters:
+  BeanstalkSourceStageS3BucketName:
+    Default: ''
+    Description: >-
+      Provide the S3 bucket name where the application package can be uploaded/is
+      uploaded for the CodePipeline Source Stage. If not provided, a bucket will be
+      created. This can be ignored if Git2S3GitToS3integration parameter is set to
+      'true'
+    Type: String
+  GitToS3integration:
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+    Description: 'Select ''true'' if you want to have GittoS3 integration setup. If
+      not leave it as default ''false'' '
+    Type: String
+  QSS3BucketName:
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    ConstraintDescription: Quick Start bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
+      (-).
+    Default: aws-quickstart
+    Description: S3 bucket name for the Quick Start assets. Quick Start bucket name
+      can include numbers, lowercase letters, uppercase letters, and hyphens (-).
+      It cannot start or end with a hyphen (-).
+    Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: ^[0-9a-zA-Z-/]*$
+    ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
+      uppercase letters, hyphens (-), and forward slash (/).
+    Default: quickstart-codepipeline-bluegreen-deployment/
+    Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
+      can include numbers, lowercase letters, uppercase letters, hyphens (-), and
+      forward slash (/).
+    Type: String
+Resources:
+  BeanstalkSourceBucket:
+    Condition: CreateBucketForBeanstalkSource
+    Properties:
+      Tags: []
+      VersioningConfiguration:
+        Status: Enabled
+    Type: AWS::S3::Bucket
+  CodePipelineArtifactStore:
+    Properties:
+      Tags: []
+    Type: AWS::S3::Bucket
+  CodePipelineArtifactStoreCleanUp:
+    Properties:
+      DestBucket: !Ref 'CodePipelineArtifactStore'
+      ServiceToken: !GetAtt 'S3CleanUpFunction.Arn'
+    Type: AWS::CloudFormation::CustomResource
+  CopyZips:
+    Properties:
+      DestBucket: !Ref 'LambdaZipsBucket'
+      Objects:
+        - functions/packages/CreateEnvironment/creategreenenv.zip
+        - functions/packages/SwapEnvironments/swapenvironments.zip
+        - functions/packages/TestBlueEnvironment/testBlueenvironment.zip
+        - functions/packages/TerminateandReSwap/terminategreenenv.zip
+      Prefix: !Ref 'QSS3KeyPrefix'
+      ServiceToken: !GetAtt 'CopyZipsFunction.Arn'
+      SourceBucket: !Ref 'QSS3BucketName'
+    Type: AWS::CloudFormation::CustomResource
+  CopyZipsFunction:
+    Properties:
+      Code:
+        ZipFile: !Join
+          - "\n"
+          - - import json
+            - import logging
+            - import threading
+            - import boto3
+            - import cfnresponse
+            - ''
+            - ''
+            - 'def copy_objects(source_bucket, dest_bucket, prefix, objects):'
+            - '    s3 = boto3.client(''s3'')'
+            - '    for o in objects:'
+            - '        key = prefix + o'
+            - '        copy_source = {'
+            - '            ''Bucket'': source_bucket,'
+            - '            ''Key'': key'
+            - '        }'
+            - '        s3.copy_object(CopySource=copy_source, Bucket=dest_bucket,
+              Key=key)'
+            - ''
+            - ''
+            - 'def delete_objects(bucket):'
+            - '    client = boto3.client(''s3'')'
+            - '    print("Collecting data from" + bucket)'
+            - '    paginator = client.get_paginator(''list_object_versions'')'
+            - '    result = paginator.paginate(Bucket=bucket)'
+            - '    objects = []'
+            - '    for page in result:'
+            - '        try:'
+            - '            for k in page[''Versions'']:'
+            - '                objects.append({''Key'':k[''Key''],''VersionId'': k[''VersionId'']})'
+            - '            try:'
+            - '                for k in page[''DeleteMarkers'']:'
+            - '                    version = k[''VersionId'']'
+            - '                    key = k[''Key'']'
+            - '                    objects.append({''Key'': key,''VersionId'': version})'
+            - '            except:'
+            - '                pass'
+            - '            print("deleting objects")'
+            - '            client.delete_objects(Bucket=bucket,     Delete={''Objects'':
+              objects})'
+            - '           # objects = []'
+            - '        except:'
+            - '            pass'
+            - '    print("bucket already empty")'
+            - ''
+            - ''
+            - ''
+            - 'def timeout(event, context):'
+            - '    logging.error(''Execution is about to time out, sending failure
+              response to CloudFormation'')'
+            - '    cfnresponse.send(event, context, cfnresponse.FAILED, {}, None)'
+            - ''
+            - ''
+            - 'def handler(event, context):'
+            - '    # make sure we send a failure to CloudFormation if the function
+              is going to timeout'
+            - '    timer = threading.Timer((context.get_remaining_time_in_millis()
+              / 1000.00) - 0.5, timeout, args=[event, context])'
+            - '    timer.start()'
+            - ''
+            - '    print(''Received event: %s'' % json.dumps(event))'
+            - '    status = cfnresponse.SUCCESS'
+            - '    try:'
+            - '        source_bucket = event[''ResourceProperties''][''SourceBucket'']'
+            - '        dest_bucket = event[''ResourceProperties''][''DestBucket'']'
+            - '        prefix = event[''ResourceProperties''][''Prefix'']'
+            - '        objects = event[''ResourceProperties''][''Objects'']'
+            - '        if event[''RequestType''] == ''Delete'':'
+            - '            delete_objects(dest_bucket)'
+            - '        else:'
+            - '            copy_objects(source_bucket, dest_bucket, prefix, objects)'
+            - '    except Exception as e:'
+            - '        logging.error(''Exception: %s'' % e, exc_info=True)'
+            - '        status = cfnresponse.FAILED'
+            - '    finally:'
+            - '        timer.cancel()'
+            - '        cfnresponse.send(event, context, status, {}, None)'
+            - ''
+      Description: Copies objects from a source S3 bucket to a destination
+      Handler: index.handler
+      Role: !GetAtt 'CopyZipsRole.Arn'
+      Runtime: python2.7
+      Timeout: 240
+    Type: AWS::Lambda::Function
+  CopyZipsRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:GetObject
+                Effect: Allow
+                Resource:
+                  - !Sub 'arn:aws:s3:::${QSS3BucketName}/${QSS3KeyPrefix}*'
+              - Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:ListBucketVersions
+                  - s3:DeleteObjectVersion
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+                Effect: Allow
+                Resource:
+                  - !Sub 'arn:aws:s3:::${LambdaZipsBucket}/${QSS3KeyPrefix}*'
+                  - !Sub 'arn:aws:s3:::${LambdaZipsBucket}'
+            Version: '2012-10-17'
+          PolicyName: lambda-copier
+    Type: AWS::IAM::Role
+  EmptyBeanstalkSourceBucketCleanup:
+    Condition: CreateBucketForBeanstalkSource
+    Properties:
+      DestBucket: !Ref 'BeanstalkSourceBucket'
+      ServiceToken: !GetAtt 'S3CleanUpFunction.Arn'
+    Type: AWS::CloudFormation::CustomResource
+  LambdaZipsBucket:
+    Properties:
+      Tags: []
+      VersioningConfiguration:
+        Status: Enabled
+    Type: AWS::S3::Bucket
+  S3CleanUpFunction:
+    Properties:
+      Code:
+        ZipFile: !Join
+          - "\n"
+          - - import json
+            - import logging
+            - import threading
+            - import boto3
+            - import cfnresponse
+            - client = boto3.client('s3')
+            - ''
+            - ''
+            - 'def delete_NonVersionedobjects(bucket):'
+            - '    print("Collecting data from" + bucket)'
+            - '    paginator =     client.get_paginator(''list_objects_v2'')'
+            - '    result = paginator.paginate(Bucket=bucket)'
+            - '    objects = []'
+            - '    for page in result:'
+            - '        try:'
+            - '            for k in page[''Contents'']:'
+            - '                objects.append({''Key'': k[''Key'']})'
+            - '                print("deleting objects")'
+            - '                client.delete_objects(Bucket=bucket, Delete={''Objects'':
+              objects})'
+            - '                objects = []'
+            - '        except:'
+            - '            pass'
+            - '            print("bucket is already empty")'
+            - ''
+            - 'def delete_versionedobjects(bucket):'
+            - '    print("Collecting data from" + bucket)'
+            - '    paginator = client.get_paginator(''list_object_versions'')'
+            - '    result = paginator.paginate(Bucket=bucket)'
+            - '    objects = []'
+            - '    for page in result:'
+            - '        try:'
+            - '            for k in page[''Versions'']:'
+            - '                objects.append({''Key'':k[''Key''],''VersionId'': k[''VersionId'']})'
+            - '            try:'
+            - '                for k in page[''DeleteMarkers'']:'
+            - '                    version = k[''VersionId'']'
+            - '                    key = k[''Key'']'
+            - '                    objects.append({''Key'': key,''VersionId'': version})'
+            - '            except:'
+            - '                pass'
+            - '            print("deleting objects")'
+            - '            client.delete_objects(Bucket=bucket, Delete={''Objects'':
+              objects})'
+            - '           # objects = []'
+            - '        except:'
+            - '            pass'
+            - '    print("bucket already empty")'
+            - ''
+            - ''
+            - ''
+            - 'def timeout(event, context):'
+            - '    logging.error(''Execution is about to time out, sending failure
+              response to CloudFormation'')'
+            - '    cfnresponse.send(event, context, cfnresponse.FAILED, {}, None)'
+            - ''
+            - ''
+            - 'def handler(event, context):'
+            - '    # make sure we send a failure to CloudFormation if the function
+              is going to timeout'
+            - '    timer = threading.Timer((context.get_remaining_time_in_millis()
+              / 1000.00) - 0.5, timeout, args=[event, context])'
+            - '    timer.start()'
+            - ''
+            - '    print(''Received event: %s'' % json.dumps(event))'
+            - '    status = cfnresponse.SUCCESS'
+            - '    try:'
+            - '        dest_bucket = event[''ResourceProperties''][''DestBucket'']'
+            - '        if event[''RequestType''] == ''Delete'':'
+            - '            CheckifVersioned = client.get_bucket_versioning(Bucket=dest_bucket)'
+            - '            print CheckifVersioned'
+            - '            if ''Status'' in CheckifVersioned:'
+            - '                print CheckifVersioned[''Status'']'
+            - '                print ("This is a versioned Bucket")'
+            - '                delete_versionedobjects(dest_bucket)'
+            - '            else:'
+            - '                print "This is not a versioned bucket"'
+            - '                delete_NonVersionedobjects(dest_bucket)'
+            - '        else:'
+            - '            print("Nothing to do")'
+            - '    except Exception as e:'
+            - '        logging.error(''Exception: %s'' % e, exc_info=True)'
+            - '        status = cfnresponse.FAILED'
+            - '    finally:'
+            - '        timer.cancel()'
+            - '        cfnresponse.send(event, context, status, {}, None)'
+            - ''
+      Description: Empty the S3 Buckets while deleting the Stack
+      Handler: index.handler
+      Role: !GetAtt 'S3CleanUpRole.Arn'
+      Runtime: python2.7
+      Timeout: 240
+    Type: AWS::Lambda::Function
+  S3CleanUpRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:ListBucketVersions
+                  - s3:DeleteObjectVersion
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+                Effect: Allow
+                Resource: !If
+                  - CreateBucketForBeanstalkSource
+                  - - !Sub 'arn:aws:s3:::${CodePipelineArtifactStore}/*'
+                    - !Sub 'arn:aws:s3:::${CodePipelineArtifactStore}'
+                    - !Sub 'arn:aws:s3:::${BeanstalkSourceBucket}/*'
+                    - !Sub 'arn:aws:s3:::${BeanstalkSourceBucket}'
+                  - - !Sub 'arn:aws:s3:::${CodePipelineArtifactStore}/*'
+                    - !Sub 'arn:aws:s3:::*'
+            Version: '2012-10-17'
+          PolicyName: lambda-copier
+    Type: AWS::IAM::Role
+Outputs:
+  BeanstalkSourceBucket:
+    Condition: CreateBucketForBeanstalkSource
+    Description: S3 Bucket for the CodePipeline Source Stage for Beanstalk
+    Value: !Ref 'BeanstalkSourceBucket'
+  CodePipelineArtifactStore:
+    Description: S3 Bucket for the CodePipeline Artifcat
+    Value: !Ref 'CodePipelineArtifactStore'
+  LambdaZipsBucket:
+    Description: S3 Bucket for the Lambda Function Code
+    Value: !Ref 'LambdaZipsBucket'
