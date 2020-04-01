@@ -52,6 +52,14 @@ Parameters:
     Type: String
 Conditions:
   UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
+  CreateBucketForBeanstalkSource: !And
+    - !Equals
+      - !Ref 'BeanstalkSourceStageS3BucketName'
+      - ''
+    - !Not
+      - !Equals
+        - !Ref 'GitToS3integration'
+        - 'true'
 Resources:
   BeanstalkSourceBucket:
     Condition: CreateBucketForBeanstalkSource
