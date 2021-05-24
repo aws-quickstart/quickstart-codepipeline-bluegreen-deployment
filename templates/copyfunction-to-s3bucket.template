@@ -1,15 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Copy Function template that creates the Asset bucket for Lambda and uploads
-  the code.
-Conditions:
-  CreateBucketForBeanstalkSource: !And
-    - !Equals
-      - !Ref 'BeanstalkSourceStageS3BucketName'
-      - ''
-    - !Not
-      - !Equals
-        - !Ref 'GitToS3integration'
-        - 'true'
+Description: Copy Function template that creates the Asset bucket for Lambda and upload the code. (qs-1rt5l9b00)
 Parameters:
   BeanstalkSourceStageS3BucketName:
     Default: ''
@@ -36,10 +26,6 @@ Parameters:
     Description: S3 bucket name for the Quick Start assets. Quick Start bucket name
       can include numbers, lowercase letters, uppercase letters, and hyphens (-).
       It cannot start or end with a hyphen (-).
-    Type: String
-  QSS3BucketRegion:
-    Default: 'us-east-1'
-    Description: 'The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value.'
     Type: String
   QSS3KeyPrefix:
     AllowedPattern: ^[0-9a-zA-Z-/]*$
@@ -174,7 +160,7 @@ Resources:
       Description: Copies objects from a source S3 bucket to a destination
       Handler: index.handler
       Role: !GetAtt 'CopyZipsRole.Arn'
-      Runtime: python2.7
+      Runtime: python3.7
       Timeout: 240
     Type: AWS::Lambda::Function
   CopyZipsRole:
@@ -187,7 +173,7 @@ Resources:
               Service: lambda.amazonaws.com
         Version: '2012-10-17'
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Path: /
       Policies:
         - PolicyDocument:
@@ -209,8 +195,8 @@ Resources:
                   - s3:GetBucketVersioning
                 Effect: Allow
                 Resource:
-                  - !Sub 'arn:aws:s3:::${LambdaZipsBucket}/${QSS3KeyPrefix}*'
-                  - !Sub 'arn:aws:s3:::${LambdaZipsBucket}'
+                  - !Sub arn:${AWS::Partition}:s3:::${LambdaZipsBucket}/${QSS3KeyPrefix}*
+                  - !Sub arn:${AWS::Partition}:s3:::${LambdaZipsBucket}
             Version: '2012-10-17'
           PolicyName: lambda-copier
     Type: AWS::IAM::Role
@@ -321,7 +307,7 @@ Resources:
       Description: Empty the S3 Buckets while deleting the Stack
       Handler: index.handler
       Role: !GetAtt 'S3CleanUpRole.Arn'
-      Runtime: python2.7
+      Runtime: python3.7
       Timeout: 240
     Type: AWS::Lambda::Function
   S3CleanUpRole:
@@ -334,7 +320,7 @@ Resources:
               Service: lambda.amazonaws.com
         Version: '2012-10-17'
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Path: /
       Policies:
         - PolicyDocument:

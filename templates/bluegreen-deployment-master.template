@@ -2,6 +2,12 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: CICD Pipeline setup for a cost efficient Elastic Beanstalk Blue-Green
   deployment (qs-1odpn28j4).
 Metadata:
+  QSLint:
+    Exclusions: [ W9002, W9003, W9004, W9006 ]
+  cfn-lint:
+    config:
+      ignore_checks:
+        - E0002
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:

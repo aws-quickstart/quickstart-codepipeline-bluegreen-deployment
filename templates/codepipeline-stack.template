@@ -1,6 +1,21 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: CICD Pipeline setup for a cost efficient Elastic Beanstalk Blue-Green
+Description: CICD Pipeline setup for a cost efficient Elastic Beanstalk Blue-Green (qs-1rt5l9b08)
   deployment.
+Metadata:
+  QSLint:
+    Exclusions: [ W9002, W9003, W9004, W9006 ]
+  cfn-lint:
+    config:
+      ignore_checks:
+        - E9904
+        - E9902
+        - E9010
+        - W9901
+        - EIAMPolicyWildcardResource
+        - EIAMPolicyActionWildcard
+      ignore_reasons:
+        EIAMPolicyWildcardResource: (Line 398-574) Done by Design
+        EIAMPolicyActionWildcard: (Line 398-574) Done by Design
 Parameters:
   AdministratorEmail:
     AllowedPattern: ^[a-z0-9]+(\.[_a-z0-9]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,15})$
@@ -224,7 +239,7 @@ Resources:
                   - logs:PutLogEvents
                 Effect: Allow
                 Resource:
-                  - '*'
+                  - !Sub 'arn:${AWS::Partition}:logs:*:*:log-group:*:*'
                 Sid: CloudWatchLogsPolicy
               - Action:
                   - s3:GetObject
@@ -232,21 +247,33 @@ Resources:
                   - s3:GetObjectVersion
                 Effect: Allow
                 Resource:
-                  - '*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::*'
                 Sid: S3GetObjectPolicy
               - Action:
                   - s3:PutObject
                 Effect: Allow
                 Resource:
-                  - '*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::*'
                 Sid: S3PutObjectPolicy
               - Action:
                   - elasticbeanstalk:SwapEnvironmentCNAMEs
-                  - elasticbeanstalk:Describe*
+                  - elasticbeanstalk:DescribeEnvironmentManagedActionHistory
+                  - elasticbeanstalk:DescribeConfigurationSettings
+                  - elasticbeanstalk:DescribeEvents
+                  - elasticbeanstalk:DescribeEnvironments
+                  - elasticbeanstalk:DescribeEnvironmentHealth
+                  - elasticbeanstalk:DescribeAccountAttributes
+                  - elasticbeanstalk:DescribeEnvironmentManagedActions
+                  - elasticbeanstalk:DescribeApplicationVersion
+                  - elasticbeanstalk:DescribePlatformVersion
+                  - elasticbeanstalk:DescribeInstancesHealth
+                  - elasticbeanstalk:DescribeConfigurationOptions
+                  - elasticbeanstalk:DescribeEnvironmentResources
+                  - elasticbeanstalk:DescribeApplications
                   - cloudformation:GetTemplate
                 Effect: Allow
                 Resource:
-                  - '*'
+                  - !Sub 'arn:${AWS::Partition}:elasticbeanstalk:::*'
                 Sid: EBAccess
             Version: '2012-10-17'
           PolicyName: codebuildpolicy
@@ -319,8 +346,8 @@ Resources:
                 - lambda.amazonaws.com
         Version: '2012-10-17'
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-        - arn:aws:iam::aws:policy/AWSElasticBeanstalkFullAccess
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AWSElasticBeanstalkFullAccess
       Path: /
       Policies:
         - PolicyDocument:
@@ -358,22 +385,172 @@ Resources:
                   - s3:GetObjectVersion
                   - s3:GetBucketVersioning
                 Effect: Allow
-                Resource: '*'
+                Resource:
+                  - !Sub arn:${AWS::Partition}:s3:::codepipeline*
+                  - !Sub arn:${AWS::Partition}:s3:::elasticbeanstalk*
               - Action:
                   - s3:PutObject
                 Effect: Allow
                 Resource:
-                  - arn:aws:s3:::codepipeline*
-                  - arn:aws:s3:::elasticbeanstalk*
+                  - !Sub arn:${AWS::Partition}:s3:::codepipeline*
+                  - !Sub arn:${AWS::Partition}:s3:::elasticbeanstalk*
               - Action:
                   - elasticbeanstalk:*
                   - ec2:*
                   - elasticloadbalancing:*
-                  - autoscaling:*
-                  - cloudwatch:*
+                  - autoscaling:TerminateInstanceInAutoScalingGroup
+                  - autoscaling:ExitStandby
+                  - autoscaling:CompleteLifecycleAction
+                  - autoscaling:DescribeNotificationConfigurations
+                  - autoscaling:DetachLoadBalancerTargetGroups
+                  - autoscaling:DeleteLifecycleHook
+                  - autoscaling:DeleteLaunchConfiguration
+                  - autoscaling:BatchPutScheduledUpdateGroupAction
+                  - autoscaling:DeleteAutoScalingGroup
+                  - autoscaling:SetDesiredCapacity
+                  - autoscaling:DescribeScalingActivities
+                  - autoscaling:PutLifecycleHook
+                  - autoscaling:DescribeTerminationPolicyTypes
+                  - autoscaling:DescribeScheduledActions
+                  - autoscaling:EnableMetricsCollection
+                  - autoscaling:DescribeLoadBalancerTargetGroups
+                  - autoscaling:DetachInstances
+                  - autoscaling:DescribeTags
+                  - autoscaling:SetInstanceHealth
+                  - autoscaling:PutScheduledUpdateGroupAction
+                  - autoscaling:ExecutePolicy
+                  - autoscaling:DeleteNotificationConfiguration
+                  - autoscaling:PutScalingPolicy
+                  - autoscaling:StartInstanceRefresh
+                  - autoscaling:DescribeLaunchConfigurations
+                  - autoscaling:DescribeMetricCollectionTypes
+                  - autoscaling:DescribeAutoScalingNotificationTypes
+                  - autoscaling:DescribeAdjustmentTypes
+                  - autoscaling:CreateAutoScalingGroup
+                  - autoscaling:DetachLoadBalancers
+                  - autoscaling:AttachLoadBalancerTargetGroups
+                  - autoscaling:DescribeLifecycleHooks
+                  - autoscaling:DescribeLifecycleHookTypes
+                  - autoscaling:SetInstanceProtection
+                  - autoscaling:AttachInstances
+                  - autoscaling:BatchDeleteScheduledAction
+                  - autoscaling:DescribePolicies
+                  - autoscaling:DeletePolicy
+                  - autoscaling:CreateOrUpdateTags
+                  - autoscaling:RecordLifecycleActionHeartbeat
+                  - autoscaling:DescribeAccountLimits
+                  - autoscaling:DeleteTags
+                  - autoscaling:DescribeAutoScalingInstances
+                  - autoscaling:CreateLaunchConfiguration
+                  - autoscaling:AttachLoadBalancers
+                  - autoscaling:DescribeInstanceRefreshes
+                  - autoscaling:DisableMetricsCollection
+                  - autoscaling:DescribeScalingProcessTypes
+                  - autoscaling:EnterStandby
+                  - autoscaling:SuspendProcesses
+                  - autoscaling:DescribeLoadBalancers
+                  - autoscaling:UpdateAutoScalingGroup
+                  - autoscaling:DescribeAutoScalingGroups
+                  - autoscaling:DeleteScheduledAction
+                  - autoscaling:CancelInstanceRefresh
+                  - autoscaling:ResumeProcesses
+                  - autoscaling:PutNotificationConfiguration
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:DescribeTypeRegistration
+                  - cloudformation:ListStacks
+                  - cloudformation:DescribeStackSet
+                  - cloudformation:ListStackSetOperationResults
+                  - cloudformation:TagResource
+                  - cloudformation:RegisterType
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:ListStackInstances
+                  - cloudformation:EstimateTemplateCost
+                  - cloudformation:ContinueUpdateRollback
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DeregisterType
+                  - cloudformation:UpdateTerminationProtection
+                  - cloudformation:GetStackPolicy
+                  - cloudformation:CreateUploadBucket
+                  - cloudformation:ListExports
+                  - cloudformation:UntagResource
+                  - cloudformation:ListChangeSets
+                  - cloudformation:RecordHandlerProgress
+                  - cloudformation:DetectStackResourceDrift
+                  - cloudformation:DeleteStackSet
+                  - cloudformation:DescribeStackInstance
+                  - cloudformation:ListStackSetOperations
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ListTypes
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:SignalResource
+                  - cloudformation:CreateStackInstances
+                  - cloudformation:ValidateTemplate
+                  - cloudformation:DeleteStack
+                  - cloudformation:DetectStackSetDrift
+                  - cloudformation:CreateStack
+                  - cloudformation:ListTypeRegistrations
+                  - cloudformation:SetStackPolicy
+                  - cloudformation:DeleteStackInstances
+                  - cloudformation:ListStackSets
+                  - cloudformation:DescribeAccountLimits
+                  - cloudformation:DescribeStackResource
+                  - cloudformation:UpdateStackInstances
+                  - cloudformation:CancelUpdateStack
+                  - cloudformation:DescribeStackResourceDrifts
+                  - cloudformation:ListTypeVersions
+                  - cloudformation:DescribeType
+                  - cloudformation:SetTypeDefaultVersion
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:ListImports
+                  - cloudformation:UpdateStackSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:DescribeStackDriftDetectionStatus
+                  - cloudformation:UpdateStack
+                  - cloudformation:ListStackResources
+                  - cloudformation:DetectStackDrift
+                  - cloudformation:CreateStackSet
+                  - cloudformation:StopStackSetOperation
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplate
+                  - cloudformation:DescribeStackSetOperation
+                  - cloudwatch:DeleteDashboards
+                  - cloudwatch:PutMetricStream
+                  - cloudwatch:StartMetricStreams
+                  - cloudwatch:PutInsightRule
+                  - cloudwatch:DeleteAnomalyDetector
+                  - cloudwatch:EnableInsightRules
+                  - cloudwatch:EnableAlarmActions
+                  - cloudwatch:ListDashboards
+                  - cloudwatch:PutMetricData
+                  - cloudwatch:DescribeAlarmsForMetric
+                  - cloudwatch:GetInsightRuleReport
+                  - cloudwatch:PutAnomalyDetecto
+                  - cloudwatch:DisableAlarmActions
+                  - cloudwatch:DeleteMetricStream
+                  - cloudwatch:StopMetricStreams
+                  - cloudwatch:DescribeInsightRules
+                  - cloudwatch:GetDashboard
+                  - cloudwatch:DescribeAlarmHistory
+                  - cloudwatch:DeleteInsightRules
+                  - cloudwatch:DisableInsightRules
+                  - cloudwatch:DescribeAnomalyDetectors
+                  - cloudwatch:UntagResource
+                  - cloudwatch:PutCompositeAlarm
+                  - cloudwatch:ListMetricStreams
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:ListMetrics
+                  - cloudwatch:PutMetricAlarm
+                  -  cloudwatch:SetAlarmState
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:ListTagsForResource
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:GetMetricStream
+                  - cloudwatch:DeleteAlarms
+                  - cloudwatch:GetMetricWidgetImage
+                  - cloudwatch:TagResource
+                  - cloudwatch:PutDashboard
                   - s3:*
                   - sns:*
-                  - cloudformation:*
                   - rds:*
                   - sqs:*
                   - ecs:*
