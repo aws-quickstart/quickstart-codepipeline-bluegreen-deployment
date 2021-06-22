@@ -10,9 +10,6 @@ Metadata:
         - E9902
         - E9010
         - W9901
-        - EIAMPolicyWildcardResource
-      ignore_reasons:
-        EIAMPolicyWildcardResource: (Line 278 & 288) Done by Design
 Conditions:
   CreateNewBeanstalkApp: !Equals
     - !Ref 'ExistingBeanstalkApplicationName'
@@ -79,7 +76,7 @@ Parameters:
       is required only when you leave the 'ExistingBlueEnvironmentName' property empty
     Type: String
   SolutionStackForNewBeanstalkEnv:
-    Default: 64bit Amazon Linux 2017.09 v2.6.4 running PHP 7.1
+    Default: 64bit Amazon Linux 2 v3.3.1 running PHP 7.4
     Description: >-
       Provide a name for the Beanstalk Solution stack for launching the new Blue Environment.
       If not provided, the default will be a PHP solution stack. Please refer the
@@ -259,6 +256,13 @@ Resources:
           PolicyName: root
     Type: AWS::IAM::Role
   BeanstalkServiceRole:
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyWildcardResource
+          ignore_reasons:
+            EIAMPolicyWildcardResource: Done by Design
     Condition: CreateNewBeanstalkEnv
     Properties:
       AssumeRolePolicyDocument:
