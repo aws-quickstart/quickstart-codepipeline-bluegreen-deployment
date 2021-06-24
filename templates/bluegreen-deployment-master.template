@@ -31,9 +31,6 @@ Metadata:
           - CustomDomainName
           - ApiSecret
           - AllowedIps
-          - GitToken
-          - OauthKey
-          - OauthSecret
       - Label:
           default: AWS Quick Start Configuration
         Parameters:
@@ -57,18 +54,12 @@ Metadata:
         default: Existing Beanstalk Application Name
       ExistingBlueEnvironmentName:
         default: Existing Blue Environment Name
-      GitToken:
-        default: Git Personal Access Token
       GitToS3integration:
         default: Git to S3 integration
       GreenEnvironmentName:
         default: Green Environment Name
       NameofthePipeline:
         default: Name of the Pipeline
-      OauthKey:
-        default: OAuth2 Key
-      OauthSecret:
-        default: OAuth2 Secret
       QSS3BucketName:
         default: Quick Start S3 Bucket Name
       QSS3BucketRegion:
@@ -106,7 +97,6 @@ Mappings:
       NewBlueEnvironmentName: BlueEnvironment
       NewBeanstalkApplicationName: BlueGreenBeanstalkApplication
       SolutionStackForNewBeanstalkEnv: 64bit Amazon Linux 2 v3.3.1 running PHP 7.4
-        7.1
       AppPackageS3Bucket: elasticbeanstalk-samples
       AppPackageS3key: php-sample.zip
 Parameters:
