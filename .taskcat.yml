@@ -20,26 +20,26 @@ project:
   - eu-central-1
   s3_bucket: ''
 tests:
-  test-withGittoS3withBeanstalkSample:
-    parameters:
-      AdministratorEmail: test@email.com
-      AllowedIps: 131.103.20.160/27,165.254.145.0/26,104.192.143.0/24
-      ApiSecret: test123
-      BeanstalkSourceStageS3BucketKey: ckirankumar1989/BeanstalkPHPSample/master/BeanstalkPHPSample.zip
-      BeanstalkSourceStageS3BucketName: ''
-      CustomDomainName: ''
-      ExistingBeanstalkApplicationName: ''
-      ExistingBlueEnvironmentName: ''
-      GitToS3integration: 'true'
-      GreenEnvironmentName: GreenEnvironment1
-      NameofthePipeline: BlueGreenCICDPipeline1
-      QSS3BucketName: $[taskcat_autobucket]
-      QSS3BucketRegion: $[taskcat_current_region]
-      QSS3KeyPrefix: quickstart-codepipeline-bluegreen-deployment/
-    regions:
-    - us-west-2
-    s3_bucket: ''
-    template: templates/bluegreen-deployment-master.template
+  #test-withGittoS3withBeanstalkSample:
+  #  parameters:
+  #    AdministratorEmail: test@email.com
+  #    AllowedIps: 131.103.20.160/27,165.254.145.0/26,104.192.143.0/24
+  #    ApiSecret: test123
+  #    BeanstalkSourceStageS3BucketKey: ckirankumar1989/BeanstalkPHPSample/master/BeanstalkPHPSample.zip
+  #    BeanstalkSourceStageS3BucketName: ''
+  #   CustomDomainName: ''
+  #    ExistingBeanstalkApplicationName: ''
+  #    ExistingBlueEnvironmentName: ''
+   #   GitToS3integration: 'true'
+   #   GreenEnvironmentName: GreenEnvironment1
+   #   NameofthePipeline: BlueGreenCICDPipeline1
+  #    QSS3BucketName: $[taskcat_autobucket]
+   #   QSS3BucketRegion: $[taskcat_current_region]
+   #   QSS3KeyPrefix: quickstart-codepipeline-bluegreen-deployment/
+  #  regions:
+  #  - us-west-2
+  #  s3_bucket: ''
+  #  template: templates/bluegreen-deployment-master.template
   test-withoutGittoS3withBeanstalkSample:
     parameters:
       AdministratorEmail: test@email.com
