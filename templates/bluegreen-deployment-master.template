@@ -23,6 +23,7 @@ Metadata:
         Parameters:
           - AdministratorEmail
           - NameofthePipeline
+          - UrlSwapCodeBuildServerName
       - Label:
           default: Git2s3 setup parameters. Valid only when GitToS3integration parameter
             is set to true. Ignore otherwise.
@@ -66,6 +67,8 @@ Metadata:
         default: Quick Start S3 bucket region
       QSS3KeyPrefix:
         default: Quick Start S3 Key Prefix
+      UrlSwapCodeBuildServerName:
+        default: Url Swap CodeBuild Server Name
 Conditions:
   CreateBeanstalkStack: !Or
     - !Condition 'CreateNewBeanstalkEnv'
@@ -223,6 +226,10 @@ Parameters:
       can include numbers, lowercase letters, uppercase letters, hyphens (-), and
       forward slash (/).
     Type: String
+  UrlSwapCodeBuildServerName:
+    Default: 'CICDurlSwap'
+    Description: Url swap CodeBuild server name
+    Type: String
 Rules:
   CheckforBeanstalkSourceBucketKey:
     RuleCondition: !Equals
@@ -331,6 +338,7 @@ Resources:
             - !GetAtt 'CopyFunctiontoS3BucketStack.Outputs.BeanstalkSourceBucket'
             - !Ref 'BeanstalkSourceStageS3BucketName'
         CodePipelineArtifactStore: !GetAtt 'CopyFunctiontoS3BucketStack.Outputs.CodePipelineArtifactStore'
+        UrlSwapCodeBuildServerName: !Ref 'UrlSwapCodeBuildServerName'
 Outputs:
   NewBeanstalkEnvEndPointUrl:
     Condition: CreateNewBeanstalkEnv
