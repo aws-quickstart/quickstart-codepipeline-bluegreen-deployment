@@ -56,6 +56,9 @@ Parameters:
       can include numbers, lowercase letters, uppercase letters, hyphens (-), and
       forward slash (/).
     Type: String
+  UrlSwapCodeBuildServerName:
+    Description: Url swap CodeBuild server name
+    Type: String
 Resources:
   BlueGreenCICDPipeline:
     Properties:
@@ -284,7 +287,7 @@ Resources:
             Value: bluecnameconfig.json
         Image: aws/codebuild/ubuntu-base:14.04
         Type: LINUX_CONTAINER
-      Name: CICDurlSwap
+      Name: !Ref UrlSwapCodeBuildServerName
       ServiceRole: !GetAtt 'BuildServiceRole.Arn'
       Source:
         Type: CODEPIPELINE
