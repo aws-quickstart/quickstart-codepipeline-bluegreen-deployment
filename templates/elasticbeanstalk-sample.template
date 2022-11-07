@@ -76,7 +76,7 @@ Parameters:
       is required only when you leave the 'ExistingBlueEnvironmentName' property empty
     Type: String
   SolutionStackForNewBeanstalkEnv:
-    Default: 64bit Amazon Linux 2 v3.3.1 running PHP 7.4
+    Default: 64bit Amazon Linux 2 v3.5.0 running PHP 8.0
     Description: >-
       Provide a name for the Beanstalk Solution stack for launching the new Blue Environment.
       If not provided, the default will be a PHP solution stack. Please refer the

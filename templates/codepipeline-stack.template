@@ -322,7 +322,7 @@ Resources:
         S3Key: !Sub ${QSS3KeyPrefix}functions/packages/CreateEnvironment/creategreenenv.zip
       Handler: index.handler
       Role: !GetAtt 'LambdaExecutionRole.Arn'
-      Runtime: python3.6
+      Runtime: python3.7
       Timeout: 300
     Type: AWS::Lambda::Function
   LambdaExecutionRole:
@@ -432,6 +432,6 @@ Resources:
         S3Key: !Sub '${QSS3KeyPrefix}functions/packages/TerminateandReSwap/terminategreenenv.zip'
       Handler: index.handler
       Role: !GetAtt 'LambdaExecutionRole.Arn'
-      Runtime: python3.6
+      Runtime: python3.7
       Timeout: 300
     Type: AWS::Lambda::Function
