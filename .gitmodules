@@ -2,3 +2,5 @@
 	path = submodules/quickstart-git2s3
 	url = ../../aws-quickstart/quickstart-git2s3.git
 	branch = main
+[submodule "docs/boilerplate"]
+	path = docs/boilerplate
