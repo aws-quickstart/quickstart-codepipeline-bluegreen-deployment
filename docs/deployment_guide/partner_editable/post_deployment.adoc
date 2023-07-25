@@ -1,3 +1,41 @@
 // Include any postdeployment steps here, such as steps necessary to test that the deployment was successful. If there are no postdeployment steps, leave this file empty.
 
 == Postdeployment steps
+
+=== (Optional) If Git to S3 integration is enabled, configure your Git repository. 
+
+If the *GitToS3integration* parameter is set to *true*, you need to configure the webhooks for your Git repository
+
+[#postdeploy1]
+.The Outputs tab in the AWS CloudFormation console, which displays the outputs for configuring your Git webhook
+image::../docs/deployment_guide/images/image4.png[Postdeploy]
+
+*GitPullWebHookApi* is the webhook endpoint to use if you choose the Git pull method described in the Webhook Endpoints section of the https://fwd.aws/QQBRr[Git Webhooks with AWS Services Partner Solution deployment guide].
+
+*ZipDownloadWebHookApi* is the webhook endpoint to use if you choose the zip download method described in the Webhook Endpoints section of the https://fwd.aws/QQBRr[Git Webhooks with AWS Services Partner Solution deployment guide].
+
+*PublicSSHKey* is the public SSH key that you use to connect to your repository if you're using the Git pull endpoint. This key can be configured as a read-only machine user or as a deployment key in your Git service. The exact process to set up webhooks differs from service to service. For step-by-step instructions, consult your Git service's documentation
+
+=== (Optional) Test a commit.
+
+Check that the *GitToS3integration* parameter is set to *true and* that the webhooks are set up correctly. If so, when you commit the code to the Git repository, your application code will be zipped and placed in the S3 bucket that is displayed in the *Outputs* section of the CloudFormation stack called *BeanstalkSourceBucketName*. This bucket should have a key in the following format:
+
+----
+S3://output-bucket-name/git-user/git-repository/git-user_git-repository.zip
+----
+
+where:
+
+* git-user is the owner or path prefix of the repository. In some Git services, this may be an organization name.
+* Some Git services do not return a Git user or organization for a repository. In these cases, you can omit the git-user parts of the path.
+* Because this is the S3 bucket and key referred to in the source stage of the S3 bucket, the pipeline triggers and starts the deployment.
+
+If the *GitToS3integration* parameter is set to *false*, manually upload the zip file that contains the application package to the S3 bucket that is displayed in the Outputs section of the AWS CloudFormation stack called *BeanstalkSourceBucketName*. The pipeline will automatically start the deployment process. The key name for the zip file should align with the value provided for the *BeanstalkSourceStageS3BucketKey* parameter when you create the stack.
+
+NOTE: You can update the value of the *BeanstalkSourceStageS3BucketKey* parameter by performing stack updates.
+
+[#postdeploy2]
+.Outputs section when GitToS3integration is set to false
+image::../docs/deployment_guide/images/image5.png[Postdeploy]
+
+NOTE: If you are using the sample environment and you want to test this Partner Solution, download the zip files that contain the Elastic Beanstalk sample application from the https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/tutorials.html[Elastic Beanstalk documentation].

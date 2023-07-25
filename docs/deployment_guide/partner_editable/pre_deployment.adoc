@@ -1,3 +1,16 @@
 //Include any predeployment steps here, such as signing up for a Marketplace AMI or making any changes to a partner account. If there are no predeployment steps, leave this file empty.
 
 == Predeployment steps
+
+Create an Elastic Beanstalk environment in your AWS account, or make sure that you already have an environment that can be considered a blue environment. To create an Elastic Beanstalk environment, follow the steps in https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/using-features.environments.html[AWS Elastic Beanstalk environment].
+
+If you do not have an Elastic Beanstalk environment in your account, you can launch this Quick Start with the sample application, which deploys a PHP sample solution. The Quick
+Start will deploy a sample application by default, in this case.
+
+To have a different solution stack as part of the sample environment, provide the appropriate values for the parameters *SolutionStackForNewBeanstalkEnv*, *AppPackageS3Bucket* and *AppPackageS3key* within the Mappings section of https://fwd.aws/7M5By?[bluegreen-deployment-master.template] when you launch the CloudFormation stack for this Quick Start.
+
+=== (Optional) Make a Note of an Existing Elastic Beanstalk Environment and Application
+
+. Navigate to the https://console.aws.amazon.com/elasticbeanstalk/home?region=us-east-2[Elastic Beanstalk service on the console].
+. Click the environment where you want to apply the blue-green deployment architecture. Note down the name of the https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/concepts.html[Elastic Beanstalk environment] and the https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/concepts.html[Elastic Beanstalk application] where it exists.
+. You can ignore this if you would like to test this architecture with a sample Elastic Beanstalk environment and application.

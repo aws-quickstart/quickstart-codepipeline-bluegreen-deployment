@@ -1,10 +1,13 @@
 This guide covers the information you need to deploy the {partner-product-name} Partner Solution in the AWS Cloud.
 
-// Fill in the info in <angle brackets> for use on the landing page only: 
-This Amazon Web Services (AWS) Partner Solution deploys [<product name>](<partner's marketing product page>) in the AWS Cloud so that <purpose>. This solution is for <target users> who want to <do what> so that <why>. For more information, refer to the [<product name> documentation](<URL>).
+=== CI/CD Pipeline for Blue-Green Deployment on AWS
 
-// Deploying this solution does not guarantee an organization’s compliance with any laws, certifications, policies, or other regulations. [Uncomment this statement only for solutions that relate to compliance. We'll add the corresponding reference part to the landing page and get legal approval before publishing.]
+From a disaster recovery and development perspective, when an application is developed and deployed to an Elastic Beanstalk environment, having two separate, but identical, environments—blue and green—helps increase availability and reduce risk. In this case, the blue environment is the production environment that normally handles live traffic. The CI/CD pipeline architecture creates a clone (green) of the live Elastic Beanstalk environment (blue). The pipeline then swaps the URLs between the two environments.
 
-// For advanced information about the product, troubleshooting, or additional functionality, refer to the https://{partner-solution-github-org}.github.io/{partner-solution-project-name}/operational/index.html[Operational Guide^].
+While CodePipeline deploys application code to the original environment—and testing and maintenance take place—the temporary clone environment handles the live traffic.
 
-// For information about using this Partner Solution for migrations, refer to the https://{partner-solution-github-org}.github.io/{partner-solution-project-name}/migration/index.html[Migration Guide^].
+*Suppose deployment to the blue environment fails because of issues with the application code. While the code is being corrected and recommitted to the repository, the green environment serves the live traffic, and there is no downtime. Once deployment to the blue environment is successful, and code review and code testing are completed, the pipeline once again swaps the URLs between the green and blue environments. The blue environment starts serving the live traffic again, and the pipeline terminates the temporarily created green environment.* Not having to continuously run parallel environments saves costs.
+
+This solution also allows integration with Git repositories via Git webhooks and enables automatic code deployment, immediately after the code is committed to the Git repository.
+
+NOTE: To implement Git to S3 integration, which triggers the pipeline automatically after committing the code to a Git repository, use the https://fwd.aws/QQBRr[Git Webhooks with AWS services] deployment guide for https://aws.amazon.com/quickstart/architecture/git-to-s3-using-webhooks/[Git Webhooks with AWS services].

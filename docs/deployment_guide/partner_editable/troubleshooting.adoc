@@ -2,5 +2,20 @@
 
 For troubleshooting common Partner Solution issues, refer to the https://fwd.aws/rA69w?[AWS Partner Solution General Information Guide^] and https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/troubleshooting.html[Troubleshooting CloudFormation^].
 
-// == Resources
-// Uncomment section and add links to any external resources that are specified by the partner.
+If your commits are not being pushed through to Amazon S3 when using Git to S3 integration, check the following:
+
+* In your Git webhooks configuration, check that your configured security parameters and he endpoint are correct. Consult the Git service documentation for detailed guidance on configuration.
+* Check the Lambda logs for errors. These are stored in Amazon CloudWatch Logs. To access the logs, open the endpoint's Lambda function in the AWS Lambda console, navigate to the *Monitoring* tab, and then choose *View logs in CloudWatch*.
+
+== Additional Resources
+
+=== Git webhooks
+
+* GitHub Developer Repository Webhooks API https://developer.github.com/v3/repos/hooks/
+* Atlassian Bitbucket Webhooks documentation https://confluence.atlassian.com/bitbucket/manage-webhooks-735643732.html
+* GitLab Webhooks documentation https://docs.gitlab.com/ce/user/project/integrations/webhooks.html
+
+=== Quick Start Git to S3
+
+* Git Webhooks with AWS services https://aws.amazon.com/quickstart/architecture/git-to-s3-using-webhooks/
+* Git Webhooks with AWS services documentation https://aws-quickstart.s3.amazonaws.com/quickstart-git2s3/doc/git-to-amazon-s3-using-webhooks.pdf

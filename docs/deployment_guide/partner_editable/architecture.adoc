@@ -6,23 +6,62 @@ AWS Cloud.
 // Replace this example diagram with your own. Follow our wiki guidelines: https://w.amazon.com/bin/view/AWS_Quick_Starts/Process_for_PSAs/#HPrepareyourarchitecturediagram. Upload your source PowerPoint file to the GitHub {deployment name}/docs/images/ directory in its repository.
 
 [#architecture1]
-.Partner Solution architecture for {partner-product-short-name} on AWS
-image::../docs/deployment_guide/images/architecture_diagram.png[Architecture]
+.Architecture for {partner-product-short-name} on AWS
+image::../docs/deployment_guide/images/image1.jpeg[Architecture]
 
 As shown in <<architecture1>>, this Partner Solution sets up the following:
 
-* A highly available architecture that spans two Availability Zones.*
-* A virtual private cloud (VPC) configured with public and private subnets, according to AWS
-best practices, to provide you with your own virtual network on AWS.*
-* In the public subnets:
-** Managed network address translation (NAT) gateways to allow outbound
-internet access for resources in the private subnets.*
-** A Linux bastion host in an Auto Scaling group to allow inbound Secure
-Shell (SSH) access to Amazon Elastic Compute Cloud (Amazon EC2) instances in public and private subnets.*
-* In the private subnets:
-** <item>.
-** <item>.
-// Add bullet points for any additional components that are included in the deployment. Ensure that the additional components are shown in the architecture diagram. End each bullet with a period.
-* <describe any additional components>.
+The Quick Start sets up the following components:
 
-[.small]#* The template that deploys this Partner Solution into an existing VPC skips the components marked by asterisks and prompts you for your existing VPC configuration.#
+* A pipeline created by CodePipeline, which is triggered when the S3 bucket referenced in the source stage is uploaded with a new version of the application package required for deploying to the Elastic Beanstalk environment.
+* Lambda functions to clone the blue environment as the green environment, to re-swap the URLs, and to terminate the green environment when deployment and testing for the blue environment are complete.
+* CodeBuild projects to perform the initial URL swap between the blue and green environments and to test the deployment of the blue environment.
+* An SNS topic for setting up the CodePipeline approval stage and for sending the approval email.
+* IAM roles for the Lambda functions, CodeBuild projects, CodePipeline, and service role for the Elastic Beanstalk sample application.
+* Separate Amazon S3 buckets for the CodePipeline Artifact Store, the Lambda Function assets, and the CodeBuild assets. You can have an optional S3 bucket for storing the zip package that contains application code for the Elastic Beanstalk deployment.
+* If an existing Elastic Beanstalk environment and the application where it exists is not provided, this Quick Start creates a sample environment named *BlueEnvironment* in the application named *BlueGreenBeanstalkApplication*.
+
+If Git to S3 integration is enabled (when the parameter GitToS3integration is set to *True*), it creates the following components in addition to the preceding ones:
+
+* An API Gateway endpoint to accept webhook requests from Git.
+* Lambda functions to connect to the Git service, either over Secure Shell (SSH) or through the Git service’s endpoint. These functions zip the code and upload it to Amazon S3.
+
+NOTE: *Important* The Lambda functions that this Quick Start deploys must be able to communicate with your Git repository. For example, you can use a software as a service (SaaS)-based Git service that the Lambda service can reach through the internet.
+
+* An AWS KMS key to encrypt the SSH private key that is used to connect to the repository over SSH.
+* Two S3 buckets: One bucket stores the zipped contents of your Git repository, and the second bucket stores the AWS KMS-encrypted SSH private keys that are generated during stack creation. Note that the first bucket has versioning enabled, and all previous versions are retained indefinitely. If you’d like to manage the retention period for old versions, follow the instructions in the http://docs.aws.amazon.com/AmazonS3/latest/user-guide/create-lifecycle.html[Amazon S3 documentation].
+* Several IAM roles required for the Lambda functions and API Gateway. The inline permissions attached to these roles are scoped using the http://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege[least privilege] model.
+* Two Lambda-backed AWS CloudFormation custom resources. One resource generates an SSH key pair, encrypts it using AWS KMS, and stores it in Amazon S3. The second resource deletes the content of the two S3 buckets on stack deletion.
+
+NOTE: If you need backups, copy the contents of the Amazon S3 bucket before you delete the CloudFormation stack.
+
+For more information about Git to S3 integration, see https://aws.amazon.com/quickstart/architecture/git-to-s3-using-webhooks/[Git Webhooks with AWS services].
+
+=== Blue-Green Deployment Process
+
+When the code is pushed to your Git repository, you can use the https://fwd.aws/QQBRr[Git Webhooks with AWS Services Quick Start] to upload the code to an S3 bucket.
+
+Using the Git Webhooks with AWS Quick Start is optional. You can also upload the zipped application package to the S3 bucket that’s used as the source stage in CodePipeline. When the code is uploaded to this S3 bucket, the deployment starts. The source stage pulls the zipped package from the S3 bucket and creates an artifact that is used for deployment.
+
+If the blue environment is serving the live traffic, and the green environment is the clone, the pipeline automatically performs the following actions shown in Figure 2:
+
+[#architecture2]
+.Blue-green deployment process
+image::../docs/deployment_guide/images/image2.png[Architecture]
+
+. The first stage of the pipeline pulls the artifact from the source bucket and provides it for deployment to the Elastic Beanstalk environment.
+. The second stage triggers a Lambda function that clones the blue environment, which results in a green environment.
+. The third stage waits for manual approval before proceeding to the next stage.
+. The fourth stage swaps the URLs between the blue and the green environments using a CodeBuild project. Once this is complete, the green environment serves the live traffic.
+. The fifth stage performs the deployment to the blue environment.
+. If the deployment is successful, the sixth stage triggers a test on the blue environment to see if it can access a 200 OK in the response. If the response is other than 200 OK, the pipeline doesn’t proceed, and marks this stage as failed.
+. If the test stage is successful, another Lambda function is triggered in the seventh stage, which again swaps the URLs between the blue and green environments and then terminates the green environment. The blue environment gets back its initial Elastic Beanstalk CNAME that it initially had for serving the live traffic.
+
+=== Best Practices
+
+NOTE: This Quick Start is intended for an already existing Elastic Beanstalk environment that you can use as a blue environment. The sample Elastic Beanstalk environment that is created via this Quick Start is for illustration and demonstration purposes only.
+
+The architecture built by this Quick Start supports AWS best practices for high availability and security. We recommend that you adhere to the following best practices:
+
+* Do not make any changes to the AWS resources created by this Quick Start directly on the AWS Management Console, command-line interface, or SDK, especially when the pipeline is running.
+* Use a valid email address for the approval stage of the pipeline. This stage is crucial for the pipeline to proceed, swap the URLs, and perform the deployments.

@@ -1,8 +1,7 @@
 // Edit this placeholder text as necessary to describe the deployment options.
 
-This Partner Solution provides the following deployment options:
+This Quick Start provides two deployment options, using the same template, depending on whether the GitToS3integration parameter is set to *true* or *false*:
 
-* https://qs_launch_permalink[Deploy {partner-product-short-name} into a new VPC^]. This option builds a new AWS environment that consists of the VPC, subnets, NAT gateways, security groups, bastion hosts, and other infrastructure components. It then deploys {partner-product-short-name} into this new VPC.
-* https://qs_launch_permalink[Deploy {partner-product-short-name} into an existing VPC^]. This option provisions {partner-product-short-name} in your existing AWS infrastructure.
+* https://fwd.aws/QAmBk?[Deploy with Git to S3 integration] This option builds a new AWS environment consisting of the pipeline created by AWS CodePipeline, along with other infrastructure components. It also builds an API Gateway interface and Lambda functions that allow an automatic trigger to the pipeline via webhooks, when the code is committed to the Git repository. The Git to S3 integration automatically uploads the code into the S3 bucket location referenced by the source stage of the pipeline, which automatically triggers code deployment on the pipeline.
 
-This Partner Solution provides separate templates for these options. It also lets you configure Classless Inter-Domain Routing (CIDR) blocks, instance types, and {partner-product-short-name} settings.
+* https://fwd.aws/QAmBk?[Deploy without Git to S3 integration] This option builds a new AWS environment consisting of the pipeline created by CodePipeline, along with other infrastructure components. The pipeline gets automatically triggered when the zip file package is uploaded to the S3 bucket location that is referenced in the source stage.
